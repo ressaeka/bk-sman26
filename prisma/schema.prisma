@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// 1. AUTENTIKASI & AKUN
+model role {
+  id        Int      @id @default(autoincrement())
+  nama_role String   @unique @db.VarChar(50)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+  updatedAt DateTime @default(now()) @db.DateTime(0)
+  user      user[]
+
+  @@map("role")
+}
+
+model user {
+  id                 Int        @id @default(autoincrement())
+  username           String     @unique @db.VarChar(150)
+  passwordHash       String     @db.VarChar(255)
+  roleId             Int
+  siswaId            Int?       @unique
+  counselorId        Int?       @unique
+  isActive           Boolean    @default(true)
+  mustChangePassword Boolean    @default(true)
+  createdAt          DateTime   @default(now()) @db.DateTime(0)
+  updatedAt          DateTime   @default(now()) @db.DateTime(0)
+
+  role               role       @relation(fields: [roleId], references: [id])
+  siswa              siswa?     @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+  counselor          counselor? @relation(fields: [counselorId], references: [id], onDelete: Cascade)
+  session            session[]
+
+  @@index([roleId])
+  @@map("user")
+}
+
+model session {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tokenHash String   @unique @db.VarChar(255)
+  expiresAt DateTime @db.DateTime(0)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+// 2. PROFIL PENGGUNA
+model counselor {
+  id             Int             @id @default(autoincrement())
+  nip            String?         @unique @db.VarChar(50)
+  nama_counselor String          @db.VarChar(150)
+  createdAt      DateTime        @default(now()) @db.DateTime(0)
+  updatedAt      DateTime        @default(now()) @db.DateTime(0)
+
+  user           user?
+  pelanggaran    Pelanggaran[]
+  tesDiagnostik  TesDiagnostik[]
+  konseling      Konseling[]
+
+  @@map("counselor")
+}
+
+model siswa {
+  id            Int             @id @default(autoincrement())
+  nipd          String?         @db.VarChar(50)
+  nisn          String          @unique @db.VarChar(50)
+  nama_siswa    String?         @db.VarChar(150)
+  jenis_kelamin String?         @db.Char(1)
+  rombel        String?         @db.VarChar(50)
+  tanggal_lahir DateTime?       @db.Date
+  agama         String?         @db.VarChar(50)
+  alamat        String?         @db.Text
+  totalPoin     Int             @default(0)
+  createdAt     DateTime        @default(now()) @db.DateTime(0)
+  updatedAt     DateTime        @default(now()) @db.DateTime(0)
+
+  user          user?
+  pelanggaran   Pelanggaran[]
+  gayaBelajar   GayaBelajar[]
+  tesDiagnostik TesDiagnostik[]
+  minatBakat    MinatBakat[]
+  konseling     Konseling[]
+
+  @@map("siswa")
+}
+
+// 3. FITUR ASESMEN & DSS
+model Pelanggaran {
+  id               Int        @id @default(autoincrement())
+  siswaId          Int
+  counselorId      Int?
+  jenisPelanggaran String     @db.VarChar(255)
+  poin             Int
+  keterangan       String?    @db.Text
+  createdAt        DateTime   @default(now()) @db.DateTime(0)
+
+  siswa            siswa      @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+  counselor        counselor? @relation(fields: [counselorId], references: [id], onDelete: SetNull)
+
+  @@index([siswaId])
+  @@index([counselorId])
+  @@map("pelanggaran")
+}
+
+model GayaBelajar {
+  id        Int      @id @default(autoincrement())
+  siswaId   Int
+  skorV     Int
+  skorA     Int
+  skorK     Int
+  dominan   String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+
+  siswa     siswa    @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+
+  @@index([siswaId])
+  @@map("gaya_belajar")
+}
+
+model TesDiagnostik {
+  id             Int        @id @default(autoincrement())
+  siswaId        Int
+  counselorId    Int?
+  daftarMasalah  String     @db.Text
+  ceritaTambahan String?    @db.Text
+  statusReview   String     @default("PENDING") @db.VarChar(20)
+  catatanGuruBK  String?    @db.Text
+  reviewedAt     DateTime?  @db.DateTime(0)
+  createdAt      DateTime   @default(now()) @db.DateTime(0)
+
+  siswa          siswa      @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+  counselor      counselor? @relation(fields: [counselorId], references: [id], onDelete: SetNull)
+
+  @@index([siswaId])
+  @@index([counselorId])
+  @@map("tes_diagnostik")
+}
+
+model MinatBakat {
+  id          Int      @id @default(autoincrement())
+  siswaId     Int
+  kodeTop3    String   @db.VarChar(10)
+  rekomendasi String   @db.VarChar(150)
+  skorR       Int      @default(0)
+  skorI       Int      @default(0)
+  skorA       Int      @default(0)
+  skorS       Int      @default(0)
+  skorE       Int      @default(0)
+  skorC       Int      @default(0)
+  createdAt   DateTime @default(now()) @db.DateTime(0)
+
+  siswa       siswa    @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+
+  @@index([siswaId])
+  @@map("minat_bakat")
+}
+
+// 4. SESI KONSELING
+model Konseling {
+  id            Int        @id @default(autoincrement())
+  siswaId       Int
+  counselorId   Int?
+  tanggal       DateTime   @db.Date
+  jam           String     @db.VarChar(10)
+  topik         String     @db.VarChar(150)
+  keluhan       String?    @db.Text
+  status        String     @default("PENDING") @db.VarChar(20)
+  catatanGuruBK String?    @db.Text
+  createdAt     DateTime   @default(now()) @db.DateTime(0)
+  updatedAt     DateTime   @default(now()) @db.DateTime(0)
+
+  siswa         siswa      @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+  counselor     counselor? @relation(fields: [counselorId], references: [id], onDelete: SetNull)
+
+  @@index([siswaId])
+  @@index([counselorId])
+  @@map("konseling")
+}

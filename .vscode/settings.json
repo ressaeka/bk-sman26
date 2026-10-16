@@ -1,0 +1,18 @@
+{
+  "workbench.editor.customLabels.patterns": {
+    "**/src/**/page.tsx": "${dirname} - page.tsx",
+    "**/src/**/layout.tsx": "${dirname} - layout.tsx",
+    "**/src/**/loading.tsx": "${dirname} - loading.tsx",
+    "**/src/**/error.tsx": "${dirname} - error.tsx",
+    "**/src/**/not-found.tsx": "${dirname} - not-found.tsx",
+    "**/src/**/template.tsx": "${dirname} - template.tsx",
+    "**/src/**/default.tsx": "${dirname} - default.tsx",
+    "**/src/**/route.ts": "${dirname} - route.ts"
+  },
+
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+
+  "tailwindCSS.suggestCanonicalClasses": false
+}
