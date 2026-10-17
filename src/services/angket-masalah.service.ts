@@ -1,12 +1,12 @@
-import { diagnostikRepository } from "@/repositories/diagnostik.repository";
+import { angketMasalahRepository } from "@/repositories/angket-masalah.repository";
 import {
-  DAFTAR_MASALAH_DIAGNOSTIK,
-  STATUS_REVIEW_DIAGNOSTIK,
-} from "@/constants/diagnostik.constant";
+  DAFTAR_MASALAH_ANGKET,
+  STATUS_REVIEW_ANGKET,
+} from "@/constants/angket-masalah.constant";
 import { AppError } from "@/lib/utils/response";
 
-function formatDiagnostikResult(
-  record: NonNullable<Awaited<ReturnType<typeof diagnostikRepository.findById>>>
+function formatAngketMasalahResult(
+  record: NonNullable<Awaited<ReturnType<typeof angketMasalahRepository.findById>>>
 ) {
   let selectedIds: number[] = [];
   try {
@@ -19,7 +19,7 @@ function formatDiagnostikResult(
   }
 
   // Filter HANYA butir masalah yang dicentang siswa
-  const selectedItems = DAFTAR_MASALAH_DIAGNOSTIK.filter((item) =>
+  const selectedItems = DAFTAR_MASALAH_ANGKET.filter((item) =>
     selectedIds.includes(item.id)
   );
 
@@ -79,67 +79,74 @@ function formatDiagnostikResult(
     catatanGuruBK: record.catatanGuruBK,
     reviewedAt: record.reviewedAt,
     totalMasalahDialami: selectedItems.length,
-    hasilDiagnostik: hasilGrouping,
+    hasilangketMasalah: hasilGrouping,
     createdAt: record.createdAt,
   };
 }
 
-export const diagnostikService = {
+export const AngketMasalahService = {
   // 1. Tampilan angket / bank soal siswa
   getDaftarPertanyaan() {
-    return DAFTAR_MASALAH_DIAGNOSTIK;
+    return DAFTAR_MASALAH_ANGKET;
   },
 
-  // 2. Siswa submit asesmen diagnostik (maksimal 8 ID masalah)
+    // 2. Siswa submit asesmen angketMasalah (maksimal 8 ID masalah)
   async submitAssessment(siswaId: number, masalahIds: number[]) {
-    if (!Array.isArray(masalahIds) || masalahIds.length === 0) {
+    const existing = await angketMasalahRepository.findLatestBySiswaId(siswaId);
+
+    if (existing) {
+      throw new AppError(
+        "Anda sudah pernah mengisi Angket Masalah. Hasil asesmen Anda sudah tersimpan.",
+        400
+      );
+    }
+
+    if (!masalahIds || masalahIds.length === 0) {
       throw new AppError("Pilih minimal 1 butir masalah yang sedang dialami", 400);
     }
 
-    const uniqueIds = Array.from(new Set(masalahIds));
-
-    if (uniqueIds.length > 8) {
-      throw new AppError("Maksimal memilih 8 butir masalah", 400);
+    // Sesuaikan batas maksimal dengan 99 butir
+    if (masalahIds.length > 99) {
+      throw new AppError("Maksimal memilih 99 butir masalah", 400);
     }
 
-    const validIdsSet = new Set(DAFTAR_MASALAH_DIAGNOSTIK.map((item) => item.id));
-    const hasInvalid = uniqueIds.some((id) => !validIdsSet.has(id));
+    const validIds = masalahIds.filter((id) =>
+      DAFTAR_MASALAH_ANGKET.some((item) => item.id === id)
+    );
 
-    if (hasInvalid) {
-      throw new AppError("Pilihan butir masalah tidak valid terhadap bank soal", 400);
+    if (validIds.length === 0) {
+      throw new AppError("Pilihan butir masalah tidak valid", 400);
     }
 
-    const record = await diagnostikRepository.create({
+    const record = await angketMasalahRepository.create({
       siswaId,
-      daftarMasalah: JSON.stringify(uniqueIds),
-      statusReview: STATUS_REVIEW_DIAGNOSTIK.PENDING,
+      daftarMasalah: JSON.stringify(validIds),
+      statusReview: STATUS_REVIEW_ANGKET.PENDING,
     });
 
     return {
       id: record.id,
-      siswaId: record.siswaId,
       statusReview: record.statusReview,
-      totalMasalahDipilih: uniqueIds.length,
       createdAt: record.createdAt,
     };
   },
 
-  // 3. Detail hasil asesmen diagnostik berdasarkan ID tes (Grouping: Kategori -> Subbab -> Jawaban)
+  // 3. Detail hasil asesmen angketMasalah berdasarkan ID tes (Grouping: Kategori -> Subbab -> Jawaban)
   async getResultById(id: number) {
-    const record = await diagnostikRepository.findById(id);
+    const record = await angketMasalahRepository.findById(id);
     if (!record) {
-      throw new AppError("Data tes diagnostik tidak ditemukan", 404);
+      throw new AppError("Data Angket Masalah tidak ditemukan", 404);
     }
 
-    return formatDiagnostikResult(record);
+    return formatAngketMasalahResult(record);
   },
 
   // 4. Riwayat tes terakhir siswa
   async getLatestResult(siswaId: number) {
-    const record = await diagnostikRepository.findLatestBySiswaId(siswaId);
+    const record = await angketMasalahRepository.findLatestBySiswaId(siswaId);
     if (!record) return null;
 
-    return formatDiagnostikResult(record);
+    return formatAngketMasalahResult(record);
   },
 
   // 5. Guru BK meninjau hasil & menyimpan catatan telaah
@@ -148,13 +155,13 @@ export const diagnostikService = {
     counselorId: number,
     catatanGuruBK?: string | null
   ) {
-    const existing = await diagnostikRepository.findById(id);
+    const existing = await angketMasalahRepository.findById(id);
     if (!existing) {
-      throw new AppError("Data tes diagnostik tidak ditemukan", 404);
+      throw new AppError("Data Angket Masalah tidak ditemukan", 404);
     }
 
-    const updated = await diagnostikRepository.updateReview(id, {
-      statusReview: STATUS_REVIEW_DIAGNOSTIK.DIREVIEW,
+    const updated = await angketMasalahRepository.updateReview(id, {
+      statusReview: STATUS_REVIEW_ANGKET.DIREVIEW,
       catatanGuruBK: catatanGuruBK?.trim() || null,
       counselorId,
       reviewedAt: new Date(),
