@@ -10,10 +10,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const data = createPelanggaranSchema.parse(body);
 
-    const result = await pelanggaranService.recordPelanggaran(data, auth.user.id);
-    
+    // Kirim auth.counselorId langsung (sudah di-resolve oleh requireAuth)
+    const result = await pelanggaranService.recordPelanggaran(data, auth.counselorId);
+
     return successResponse(
-      `Poin pelanggaran berhasil dicatat. Status kedisiplinan siswa: ${result.dss.label}`,
+      `Poin pelanggaran berhasil dicatat. Status kedisiplinan siswa: ${result.dss.sanksi.tahap}`,
       result,
       201
     );

@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     const result = await pelanggaranService.getRekapAssessment(validatedFilters.rombel);
 
     return successResponse(
-      "Rekapitulasi hasil asesmen gaya belajar dan minat bakat berhasil dimuat",
+      "Rekapitulasi hasil Assessment Gaya Belajar dan Minat Bakat berhasil dimuat",
       result
     );
   } catch (error) {
