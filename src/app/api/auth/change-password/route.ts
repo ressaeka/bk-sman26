@@ -14,8 +14,8 @@ export async function POST(req: NextRequest) {
     await authService.changePassword(auth.user.id, data.oldPassword, data.newPassword);
 
     // Invalidate sesi di perangkat lain demi keamanan setelah ganti password
-    await sessionService.deleteOtherSessions(auth.user.id, auth.session.tokenHash);
-
+    await sessionService.deleteOtherSessionsByHash(auth.user.id, auth.session.tokenHash);
+    
     return successResponse("Password berhasil diubah");
   } catch (error) {
     return handleApiError(error);

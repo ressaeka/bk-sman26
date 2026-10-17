@@ -1,3 +1,4 @@
+// src/lib/auth/require-auth.ts
 import { NextRequest } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
@@ -8,44 +9,75 @@ export async function requireAuth(
   req: NextRequest,
   allowedRoles?: string[]
 ) {
-  // 1. Ambil token langsung dari cookie request
   const token = req.cookies.get(AUTH_CONSTANTS.SESSION_COOKIE_NAME)?.value;
 
   if (!token) {
     throw new AppError("Sesi tidak valid atau telah kedaluwarsa.", 401);
   }
 
-  // 2. Hash token SHA-256 untuk dicocokkan ke database
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
-  // 3. Cari sesi aktif di database
+  // Hanya select kolom yang benar-benar dibutuhkan (passwordHash TIDAK diikutkan)
   const session = await prisma.session.findUnique({
     where: { tokenHash },
-    include: {
+    select: {
+      id: true,
+      userId: true,
+      tokenHash: true,
+      expiresAt: true,
       user: {
-        include: {
-          role: true,
-          siswa: true,
-          counselor: true,
+        select: {
+          id: true,
+          username: true,
+          isActive: true,
+          mustChangePassword: true,
+          siswaId: true,
+          counselorId: true,
+          role: {
+            select: {
+              nama_role: true,
+            },
+          },
+          siswa: {
+            select: {
+              id: true,
+              nisn: true,
+              nama_siswa: true,
+              jenis_kelamin: true,
+              rombel: true,
+              totalPoin: true,     
+            },
+          },
+          counselor: {
+            select: {
+              id: true,
+              nip: true,
+              nama_counselor: true,
+            },
+          },
         },
       },
     },
   });
 
-  // 4. Validasi keaktifan sesi dan user
+  // Validasi keaktifan sesi dan user
   if (!session || session.expiresAt < new Date() || !session.user || !session.user.isActive) {
+    if (session) {
+      // Hapus sesi kedaluwarsa secara otomatis agar tabel session tidak menumpuk
+      await prisma.session.delete({ where: { tokenHash } }).catch(() => null);
+    }
     throw new AppError("Sesi tidak valid atau telah kedaluwarsa.", 401);
   }
 
   const user = session.user;
   const roleName = user.role.nama_role;
 
-  // 5. Validasi Role Guard
+  // Validasi Role Guard
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(roleName)) {
     throw new AppError("Akses ditolak. Anda tidak memiliki hak akses ke fitur ini.", 403);
   }
 
-  // 6. Validasi integritas profil sesuai role
+  // Validasi profil sesuai role
   if (roleName === "SISWA" && !user.siswaId) {
     throw new AppError("Profil siswa tidak ditemukan pada akun ini.", 400);
   }

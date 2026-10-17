@@ -37,7 +37,12 @@ export const sessionService = {
   },
 
   async deleteOtherSessions(userId: number, currentToken: string) {
-    const currentTokenHash = hashSessionToken(currentToken);
-    return sessionRepository.deleteOtherSessions(userId, currentTokenHash);
-  },
-};
+      const currentTokenHash = hashSessionToken(currentToken);
+      return sessionRepository.deleteOtherSessions(userId, currentTokenHash);
+    },
+
+    // Tambahkan method ini (menerima hash langsung tanpa hash ulang)
+    async deleteOtherSessionsByHash(userId: number, currentTokenHash: string) {
+      return sessionRepository.deleteOtherSessions(userId, currentTokenHash);
+    }
+  }

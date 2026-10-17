@@ -2,44 +2,58 @@ import { sessionService } from "@/services/session.service";
 import { userRepository } from "@/repositories/user.repository";
 import { hashPassword, verifyPassword } from "@/lib/auth";
 import { AppError } from "@/lib/utils/response";
+import { AUTH_CONSTANTS } from '@/constants/auth.constant';
 
-export const authService = {
-  async login(username: string, password: string) {
-    const user = await userRepository.findByUsername(username);
 
-    if (!user) {
-      throw new AppError("Username atau password salah", 401);
-    }
+// Hash valid argon2id statis untuk penyamar waktu komputasi
+  export const authService = {
+    async login(username: string, password: string) {
+      const user = await userRepository.findByUsername(username);
 
-    const isPasswordValid = await verifyPassword(password, user.passwordHash);
+      // Samakan waktu verifikasi komputasi Argon2id
+      const targetHash = user ? user.passwordHash : AUTH_CONSTANTS.DUMMY_ARGON2_HASH ;
+      const isPasswordValid = await verifyPassword(password, targetHash);
 
-    if (!isPasswordValid || !user.isActive) {
-      throw new AppError("Username atau password salah", 401);
-    }
+      if (!user || !isPasswordValid || !user.isActive) {
+        throw new AppError("Username atau password salah", 401);
+      }
 
-    const actualRole = user.role.nama_role;
+      const actualRole = user.role.nama_role;
 
-    if (actualRole === "SISWA" && !user.siswa) {
-      throw new AppError("Profil siswa tidak ditemukan", 400);
-    }
-    if (actualRole === "BK" && !user.counselor) {
-      throw new AppError("Profil Guru BK tidak ditemukan", 400);
-    }
+      if (actualRole === "SISWA" && !user.siswa) {
+        throw new AppError("Profil siswa tidak ditemukan", 400);
+      }
+      if (actualRole === "BK" && !user.counselor) {
+        throw new AppError("Profil Guru BK tidak ditemukan", 400);
+      }
 
-    const session = await sessionService.create(user.id);
+      const session = await sessionService.create(user.id);
 
-    return {
-      user: {
-        id: user.id,
-        username: user.username,
-        role: actualRole,
-        mustChangePassword: user.mustChangePassword,
-        siswa: user.siswa,
-        counselor: user.counselor,
-      },
-      session,
-    };
-  },
+      return {
+        user: {
+          id: user.id,
+          username: user.username,
+          role: actualRole,
+          mustChangePassword: user.mustChangePassword,
+          siswa: user.siswa
+            ? {
+                id: user.siswa.id,
+                nisn: user.siswa.nisn,
+                nama: user.siswa.nama_siswa,
+                rombel: user.siswa.rombel,
+              }
+            : null,
+          counselor: user.counselor
+            ? {
+                id: user.counselor.id,
+                nip: user.counselor.nip,
+                nama: user.counselor.nama_counselor,
+              }
+            : null,
+        },
+        session,
+      };
+    },
 
   async changePassword(userId: number, oldPassword: string, newPassword: string) {
     const user = await userRepository.findById(userId);

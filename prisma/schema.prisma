@@ -7,7 +7,6 @@ datasource db {
   provider = "mysql"
 }
 
-// 1. AUTENTIKASI & AKUN
 model role {
   id        Int      @id @default(autoincrement())
   nama_role String   @unique @db.VarChar(50)
@@ -49,10 +48,10 @@ model session {
   user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([expiresAt]) 
   @@map("session")
 }
 
-// 2. PROFIL PENGGUNA
 model counselor {
   id             Int             @id @default(autoincrement())
   nip            String?         @unique @db.VarChar(50)
@@ -62,37 +61,40 @@ model counselor {
 
   user           user?
   pelanggaran    Pelanggaran[]
-  tesDiagnostik  TesDiagnostik[]
+  angketMasalah  AngketMasalah[]
   konseling      Konseling[]
 
   @@map("counselor")
 }
 
 model siswa {
-  id            Int             @id @default(autoincrement())
-  nipd          String?         @db.VarChar(50)
-  nisn          String          @unique @db.VarChar(50)
-  nama_siswa    String?         @db.VarChar(150)
-  jenis_kelamin String?         @db.Char(1)
-  rombel        String?         @db.VarChar(50)
-  tanggal_lahir DateTime?       @db.Date
-  agama         String?         @db.VarChar(50)
-  alamat        String?         @db.Text
-  totalPoin     Int             @default(0)
-  createdAt     DateTime        @default(now()) @db.DateTime(0)
-  updatedAt     DateTime        @default(now()) @db.DateTime(0)
+  id                   Int             @id @default(autoincrement())
+  nipd                 String?         @db.VarChar(50)
+  nisn                 String          @unique @db.VarChar(50)
+  nama_siswa           String?         @db.VarChar(150)
+  jenis_kelamin        String?         @db.Char(1)
+  rombel               String?         @db.VarChar(50)
+  tanggal_lahir        DateTime?       @db.Date
+  agama                String?         @db.VarChar(50)
+  alamat               String?         @db.Text
+  totalPoin            Int             @default(0)
+  createdAt            DateTime        @default(now()) @db.DateTime(0)
+  updatedAt            DateTime        @default(now()) @db.DateTime(0)
 
-  user          user?
-  pelanggaran   Pelanggaran[]
-  gayaBelajar   GayaBelajar[]
-  tesDiagnostik TesDiagnostik[]
-  minatBakat    MinatBakat[]
-  konseling     Konseling[]
+  user                 user?
+  pelanggaran          Pelanggaran[]
+  gayaBelajar          GayaBelajar[]
+  angketMasalah        AngketMasalah[]
+  minatBakat           MinatBakat[]
+  konseling            Konseling[]
 
+  @@index([rombel])    
+  @@index([totalPoin]) 
+  @@index([nama_siswa])
   @@map("siswa")
 }
 
-// 3. FITUR ASESMEN & DSS
+
 model Pelanggaran {
   id               Int        @id @default(autoincrement())
   siswaId          Int
@@ -125,7 +127,7 @@ model GayaBelajar {
   @@map("gaya_belajar")
 }
 
-model TesDiagnostik {
+model AngketMasalah {
   id             Int        @id @default(autoincrement())
   siswaId        Int
   counselorId    Int?
@@ -141,7 +143,7 @@ model TesDiagnostik {
 
   @@index([siswaId])
   @@index([counselorId])
-  @@map("tes_diagnostik")
+  @@map("angket_masalah")
 }
 
 model MinatBakat {
@@ -163,7 +165,6 @@ model MinatBakat {
   @@map("minat_bakat")
 }
 
-// 4. SESI KONSELING
 model Konseling {
   id            Int        @id @default(autoincrement())
   siswaId       Int
@@ -182,5 +183,7 @@ model Konseling {
 
   @@index([siswaId])
   @@index([counselorId])
+  @@index([status])     
+  @@index([tanggal])    
   @@map("konseling")
 }
