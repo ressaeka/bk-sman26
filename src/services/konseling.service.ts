@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/prisma";
 import { konselingRepository } from "@/repositories/konseling.repository";
 import {
   STATUS_KONSELING,
@@ -7,6 +6,7 @@ import {
 } from "@/constants/konseling.constant";
 import { CreateKonselingInput } from "@/schemas/konseling.schema";
 import { AppError } from "@/lib/utils/response";
+import { prisma } from "@/lib/prisma"; // Pastikan import prisma ada
 
 // Buat ngerapihin data sesi konseling dari DB biar enak dibaca pas dilempar ke frontend
 export function formatKonselingSession(session: KonselingEntity) {
@@ -56,44 +56,53 @@ export function formatKonselingSession(session: KonselingEntity) {
 }
 
 export const konselingService = {
-  // Siswa bikin janji temu baru, dicek dulu biar nggak spam kalo masih ada jadwal aktif
+  // Siswa bikin janji temu baru dengan transaksi atomik anti-race-condition
   async createSession(siswaId: number, data: CreateKonselingInput) {
-    // 1. Cek dulu apakah siswa masih punya sesi yang statusnya PENDING atau DISETUJUI
-    const activeSession = await prisma.konseling.findFirst({
-      where: {
-        siswaId,
-        status: {
-          in: [STATUS_KONSELING.PENDING, STATUS_KONSELING.DISETUJUI],
-        },
-      },
-    });
-
-    if (activeSession) {
-      const statusText =
-        activeSession.status === STATUS_KONSELING.PENDING
-          ? "masih nunggu persetujuan Guru BK"
-          : "udah disetujui dan belum selesai";
-
-      throw new AppError(
-        `Kamu masih punya jadwal konseling yang ${statusText}. Selesaiin dulu sesi itu baru bisa ngajuin jadwal baru ya.`,
-        400
-      );
-    }
-
-    // 2. Cek format tanggalnya
+    // Cek format tanggalnya dulu sebelum masuk transaksi
     const tanggalDate = new Date(data.tanggal);
     if (isNaN(tanggalDate.getTime())) {
       throw new AppError("Format tanggalnya salah nih, coba cek lagi", 400);
     }
 
-    // 3. Simpan sesi baru ke database
-    const session = await konselingRepository.create({
-      siswaId,
-      tanggal: tanggalDate,
-      jam: data.jam.trim(),
-      topik: data.topik.trim(),
-      keluhan: data.keluhan ? data.keluhan.trim() : null,
-      status: STATUS_KONSELING.PENDING,
+    // Bungkus pengecekan dan pembuatan data dalam transaksi Prisma
+    const session = await prisma.$transaction(async (tx) => {
+      // 1. Cek apakah siswa masih punya sesi aktif (PENDING / DISETUJUI)
+      const activeSession = await tx.konseling.findFirst({
+        where: {
+          siswaId,
+          status: {
+            in: [STATUS_KONSELING.PENDING, STATUS_KONSELING.DISETUJUI],
+          },
+        },
+      });
+
+      if (activeSession) {
+        const statusText =
+          activeSession.status === STATUS_KONSELING.PENDING
+            ? "masih nunggu persetujuan Guru BK"
+            : "udah disetujui dan belum selesai";
+
+        throw new AppError(
+          `Kamu masih punya jadwal konseling yang ${statusText}. Selesaiin dulu sesi itu baru bisa ngajuin jadwal baru ya.`,
+          400
+        );
+      }
+
+      // 2. Simpan sesi baru ke database di dalam transaksi yang sama
+      return tx.konseling.create({
+        data: {
+          siswaId,
+          tanggal: tanggalDate,
+          jam: data.jam.trim(),
+          topik: data.topik.trim(),
+          keluhan: data.keluhan ? data.keluhan.trim() : null,
+          status: STATUS_KONSELING.PENDING,
+        },
+        include: {
+          siswa: true,
+          counselor: true,
+        },
+      });
     });
 
     return formatKonselingSession(session as KonselingEntity);
