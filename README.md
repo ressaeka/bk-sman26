@@ -196,19 +196,6 @@ npm run dev
 
 Aplikasi aktif di `http://localhost:3000`.
 
----
-
-## 🔐 7. Kredensial Awal Akun Default
-
-Berdasarkan *seeder* bawaan sistem, akun awal dibuat menggunakan format standar berikut:
-
-| Peran Akun | Username | Format Kata Sandi Awal | Catatan |
-| :--- | :--- | :--- | :--- |
-| **Guru BK** | NIP Guru BK (Contoh: `198501...`) | `${NIP}#sman26` | Wajib mengganti password di dashboard. |
-| **Siswa** | NISN Siswa (Contoh: `007123...`) | `${NISN}#sman26` | Siswa Kelas 10 berhak mengerjakan RIASEC. |
-
----
-
 ## 📄 8. Lisensi & Hak Cipta
 
 Proyek ini dikembangkan khusus untuk **SMAN 26 Kabupaten Tangerang** dalam rangka digitalisasi dan pengamanan layanan bimbingan konseling sekolah. Seluruh hak cipta dilindungi undang-undang.
