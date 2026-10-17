@@ -92,9 +92,9 @@ export const minatBakatService = {
     return BANK_SOAL_RIASEC;
   },
 
-  // Menerima langsung array jawaban dari schema Zod
   async submitAssessment(siswaId: number, answers: RiasecAnswerItem[]) {
     const student = await studentRepository.findById(siswaId);
+    const existing = await minatBakatRepository.findLatestBySiswaId(siswaId);
 
     if (!student) {
       throw new AppError("Data profil siswa tidak ditemukan", 404);
@@ -107,9 +107,22 @@ export const minatBakatService = {
       );
     }
 
+    // Cek apakah siswa sudah pernah mengisi tes minat bakat
+    if (existing) {
+      throw new AppError(
+        "Anda sudah menyelesaikan asesmen Minat & Bakat RIASEC. Rekomendasi jurusan Anda sudah terbit.",
+        400
+      );
+    }
+
     const scores = calculateRiasecScores(answers);
     const { R, I, A, S, E, C } = scores;
     const totalScore = R + I + A + S + E + C;
+
+    if (totalScore === 0) {
+      throw new AppError("Pilih minimal 1 butir kegiatan yang Anda minati", 400);
+    }
+
     const { top1, top2, top3, kodeTop3 } = calculateTop3Riasec(scores);
     const rekomendasiDetail = matchRekomendasiJurusan(top1, top2, top3);
 
@@ -160,8 +173,9 @@ export const minatBakatService = {
     const top3 = parts[2] || "C";
 
     const rekomendasiDetail =
-      Object.values(REKOMENDASI_JURUSAN).find((j) => j.kodeJurusan === record.rekomendasi) ??
-      matchRekomendasiJurusan(top1, top2, top3);
+      Object.values(REKOMENDASI_JURUSAN).find(
+        (j) => (j.kodeJurusan as string) === record.rekomendasi
+      ) ?? matchRekomendasiJurusan(top1, top2, top3);
 
     return {
       id: record.id,

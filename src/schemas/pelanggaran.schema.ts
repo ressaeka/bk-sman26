@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { STATUS_KEDISIPLINAN } from "@/constants/pelanggaran.constant";
 
 /**
  * Validasi form pencatatan poin pelanggaran oleh Guru BK
@@ -37,17 +36,7 @@ export const filterRekapPelanggaranSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(10),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
   rombel: z.string().trim().optional(),
-  status: z
-    .enum(
-      [
-        STATUS_KEDISIPLINAN.AMAN,
-        STATUS_KEDISIPLINAN.SP_1,
-        STATUS_KEDISIPLINAN.PANGGILAN_ORTU,
-        STATUS_KEDISIPLINAN.DROP_OUT,
-      ],
-      { message: "Status kedisiplinan tidak valid" }
-    )
-    .optional(),
+  status: z.string().trim().optional(),
   rawanDo: z
     .string()
     .optional()

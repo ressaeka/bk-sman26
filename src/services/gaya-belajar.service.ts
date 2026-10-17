@@ -7,7 +7,7 @@ import {
 import { AppError } from "@/lib/utils/response";
 
 export interface JawabanVakItem {
-  idSoal?: number;
+  questionId: number;
   choice: "A" | "B" | "C"; // A = Visual, B = Auditori, C = Kinestetik
 }
 
@@ -33,13 +33,23 @@ export function determineVakDominant(skorV: number, skorA: number, skorK: number
 }
 
 export const gayaBelajarService = {
-  // Mengambil butir soal untuk sisi frontend
+  // Mengambil 30 butir soal untuk sisi frontend
   getQuestions() {
     return BANK_SOAL_VAK;
   },
 
   // Menyimpan hasil asesmen siswa
   async submitAssessment(siswaId: number, answers: JawabanVakItem[]) {
+    // Cek apakah siswa sudah pernah mengisi tes gaya belajar
+    const existing = await gayaBelajarRepository.findLatestBySiswaId(siswaId);
+    
+    if (existing) {
+      throw new AppError(
+        "Anda sudah menyelesaikan asesmen Gaya Belajar. Hasil asesmen Anda sudah tercatat.",
+        400
+      );
+    }
+    
     if (!answers || answers.length === 0) {
       throw new AppError("Jawaban asesmen tidak boleh kosong", 400);
     }
@@ -66,7 +76,7 @@ export const gayaBelajarService = {
       skor: { visual: skorV, auditori: skorA, kinestetik: skorK, total },
       persentase: { visual: persentaseV, auditori: persentaseA, kinestetik: persentaseK },
       dominan,
-      interpretasi: GAYA_BELAJAR_DETAILS[dominan],
+      interpretasi: GAYA_BELAJAR_DETAILS[dominan] ?? GAYA_BELAJAR_DETAILS.VISUAL,
       createdAt: record.createdAt,
     };
   },

@@ -6,6 +6,8 @@ export const AUTH_CONSTANTS = {
     SISWA: "SISWA",
     BK: "BK",
   },
+  DUMMY_ARGON2_HASH : "$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$RdescudvJCsgqlfreOJRomJTuBpApnvJNKvFsUMv40U"
+
 } as const;
 
 export type UserRole = (typeof AUTH_CONSTANTS.ROLES)[keyof typeof AUTH_CONSTANTS.ROLES];

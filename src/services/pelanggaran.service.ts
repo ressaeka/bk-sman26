@@ -1,53 +1,10 @@
 import { pelanggaranRepository } from "@/repositories/pelanggaran.repository";
 import { studentRepository } from "@/repositories/student.repository";
-import { userRepository } from "@/repositories/user.repository";
-import {
-  THRESHOLD_PELANGGARAN,
-  STATUS_KEDISIPLINAN,
-  STATUS_DISIPLIN_META,
-  StatusKedisiplinan,
-} from "@/constants/pelanggaran.constant";
+import { evaluasiSanksiSiswa } from "@/constants/pelanggaran.constant";
 import { AppError } from "@/lib/utils/response";
 
-// DSS Engine: Evaluasi tingkat sanksi berdasarkan total akumulasi poin
-export function evaluateDisiplin(totalPoin: number) {
-  if (totalPoin >= THRESHOLD_PELANGGARAN.DROP_OUT) {
-    return {
-      status: STATUS_KEDISIPLINAN.DROP_OUT,
-      ...STATUS_DISIPLIN_META.DROP_OUT,
-      rawanDo: true,
-      sanksiAktif: ["SP_1", "PANGGILAN_ORTU", "DROP_OUT"],
-    };
-  }
-
-  if (totalPoin >= THRESHOLD_PELANGGARAN.PANGGILAN_ORTU) {
-    return {
-      status: STATUS_KEDISIPLINAN.PANGGILAN_ORTU,
-      ...STATUS_DISIPLIN_META.PANGGILAN_ORTU,
-      rawanDo: true,
-      sanksiAktif: ["SP_1", "PANGGILAN_ORTU"],
-    };
-  }
-
-  if (totalPoin >= THRESHOLD_PELANGGARAN.SP_1) {
-    return {
-      status: STATUS_KEDISIPLINAN.SP_1,
-      ...STATUS_DISIPLIN_META.SP_1,
-      rawanDo: false,
-      sanksiAktif: ["SP_1"],
-    };
-  }
-
-  return {
-    status: STATUS_KEDISIPLINAN.AMAN,
-    ...STATUS_DISIPLIN_META.AMAN,
-    rawanDo: false,
-    sanksiAktif: [],
-  };
-}
-
 export const pelanggaranService = {
-  // Input pelanggaran baru oleh Guru BK (otomatis memicu DSS & increment poin di DB)
+  // 1. Input pelanggaran baru oleh Guru BK (Memicu DSS & increment atomik)
   async recordPelanggaran(
     payload: {
       siswaId: number;
@@ -55,7 +12,7 @@ export const pelanggaranService = {
       poin: number;
       keterangan?: string | null;
     },
-    counselorUserId?: number
+    counselorId?: number | null // Langsung terima counselorId dari auth
   ) {
     // 1. Validasi siswa
     const siswa = await studentRepository.findById(payload.siswaId);
@@ -63,36 +20,26 @@ export const pelanggaranService = {
       throw new AppError(`Siswa dengan ID ${payload.siswaId} tidak ditemukan`, 404);
     }
 
-    // 2. Ambil counselorId jika ada
-    let counselorId: number | null = null;
-    if (counselorUserId) {
-      const user = await userRepository.findById(counselorUserId);
-      counselorId = user?.counselorId ?? null;
-    }
-
     const poinSebelumnya = siswa.totalPoin;
-    const statusSebelumnya = evaluateDisiplin(poinSebelumnya).status;
+    const sanksiSebelumnya = evaluasiSanksiSiswa(poinSebelumnya);
 
-    // 3. Simpan transaksi atomik via repository
-    const { pelanggaran, updatedSiswa } = await pelanggaranRepository.createWithAtomicIncrement({
-      siswaId: payload.siswaId,
-      counselorId,
-      jenisPelanggaran: payload.jenisPelanggaran,
-      poin: payload.poin,
-      keterangan: payload.keterangan ?? null,
-    });
+    // 2. Simpan transaksi atomik via repository (hemat 1 query pencarian user)
+    const { pelanggaran, updatedSiswa } =
+      await pelanggaranRepository.createWithAtomicIncrement({
+        siswaId: payload.siswaId,
+        counselorId: counselorId ?? null,
+        jenisPelanggaran: payload.jenisPelanggaran,
+        poin: payload.poin,
+        keterangan: payload.keterangan ?? null,
+      });
 
-    // 4. Evaluasi ulang status DSS setelah penambahan poin
-    const evaluasiSekarang = evaluateDisiplin(updatedSiswa.totalPoin);
-    const adaKenaikanLevel = statusSebelumnya !== evaluasiSekarang.status;
+    // 3. Evaluasi ulang DSS menggunakan evaluasiSanksiSiswa[cite: 8]
+    const sanksiSekarang = evaluasiSanksiSiswa(updatedSiswa.totalPoin);
+    const adaKenaikanLevel = sanksiSebelumnya?.tahap !== sanksiSekarang?.tahap;
 
     let peringatan: string | null = null;
-    if (evaluasiSekarang.status === STATUS_KEDISIPLINAN.DROP_OUT) {
-      peringatan = "PERINGATAN: Siswa mencapai batas Drop Out (>= 100 poin). Segera jadwalkan sidang pleno dewan guru.";
-    } else if (evaluasiSekarang.status === STATUS_KEDISIPLINAN.PANGGILAN_ORTU && adaKenaikanLevel) {
-      peringatan = "PERINGATAN: Siswa mencapai batas Panggilan Orang Tua (>= 75 poin). Terbitkan surat pemanggilan resmi.";
-    } else if (evaluasiSekarang.status === STATUS_KEDISIPLINAN.SP_1 && adaKenaikanLevel) {
-      peringatan = "PERINGATAN: Siswa mencapai batas SP-1 (>= 50 poin). Terbitkan surat peringatan 1.";
+    if (sanksiSekarang && adaKenaikanLevel) {
+      peringatan = `PERHATIAN: Akumulasi poin siswa mencapai ${updatedSiswa.totalPoin}. Status saat ini: ${sanksiSekarang.tahap}.`;
     }
 
     return {
@@ -115,31 +62,38 @@ export const pelanggaranService = {
         poinSebelumnya,
         poinDitambahkan: payload.poin,
         totalPoinSekarang: updatedSiswa.totalPoin,
-        statusSebelumnya,
-        statusSekarang: evaluasiSekarang.status,
-        label: evaluasiSekarang.label,
-        tindakan: evaluasiSekarang.tindakan,
-        rawanDo: evaluasiSekarang.rawanDo,
+        sanksi: sanksiSekarang
+          ? {
+              tahap: sanksiSekarang.tahap,
+              tindakan: sanksiSekarang.tindakan,
+              pihakTerlibat: sanksiSekarang.pihakTerlibat,
+              statusKritis: sanksiSekarang.statusKritis,
+            }
+          : {
+              tahap: "Disiplin / Aman (< 25 Poin)",
+              tindakan: ["Siswa mematuhi tata tertib dengan baik."],
+              pihakTerlibat: ["Siswa"],
+              statusKritis: false,
+            },
         peringatan,
       },
     };
   },
 
-  // Rekap kedisiplinan berpaginasi (mendukung filter rombel & pencarian)
+  // 2. Rekap kedisiplinan berpaginasi
   async getRekapPelanggaran(
     page: number = 1,
     limit: number = 10,
-    filters?: { rombel?: string; search?: string; status?: StatusKedisiplinan }
+    filters?: { rombel?: string; search?: string }
   ) {
-    const { items, total, totalPages } = await pelanggaranRepository.findAllSiswaWithDisiplin(
-      page,
-      limit,
-      { rombel: filters?.rombel, search: filters?.search }
-    );
+    const { items, total, totalPages } =
+      await pelanggaranRepository.findAllSiswaWithDisiplin(page, limit, {
+        rombel: filters?.rombel,
+        search: filters?.search,
+      });
 
-    // Tempelkan hasil analisis DSS pada setiap siswa
     const enrichedItems = items.map((s) => {
-      const dss = evaluateDisiplin(s.totalPoin);
+      const sanksi = evaluasiSanksiSiswa(s.totalPoin);
       return {
         id: s.id,
         nisn: s.nisn,
@@ -148,10 +102,9 @@ export const pelanggaranService = {
         rombel: s.rombel,
         totalPoin: s.totalPoin,
         jumlahKasus: s.pelanggaran.length,
-        statusDisiplin: dss.status,
-        labelDisiplin: dss.label,
-        tindakanBK: dss.tindakan,
-        rawanDo: dss.rawanDo,
+        statusSanksi: sanksi?.tahap ?? "Aman (< 25 Poin)",
+        statusKritis: sanksi?.statusKritis ?? false,
+        tindakan: sanksi?.tindakan ?? [],
         riwayatTerbaru: s.pelanggaran.slice(0, 3).map((p) => ({
           jenis: p.jenisPelanggaran,
           poin: p.poin,
@@ -161,13 +114,8 @@ export const pelanggaranService = {
       };
     });
 
-    // Filter opsional jika user memilih filter status tertentu
-    const finalItems = filters?.status
-      ? enrichedItems.filter((i) => i.statusDisiplin === filters.status)
-      : enrichedItems;
-
     return {
-      items: finalItems,
+      items: enrichedItems,
       total,
       page,
       limit,
@@ -175,19 +123,32 @@ export const pelanggaranService = {
     };
   },
 
-  // Rekap hasil asesmen siswa per rombel
+  // 3. Rekap status asesmen siswa per rombel
+  // Di dalam method getRekapAssessment pada pelanggaranService:
   async getRekapAssessment(rombel?: string) {
     const students = await pelanggaranRepository.getRekapAssessmentByRombel(rombel);
 
     let totalMengisiVak = 0;
     let totalMengisiRiasec = 0;
+    let totalMengisiAngket = 0;
 
     const list = students.map((s) => {
       const vak = s.gayaBelajar[0] ?? null;
       const riasec = s.minatBakat[0] ?? null;
+      const angket = s.angketMasalah[0] ?? null;
 
       if (vak) totalMengisiVak++;
       if (riasec) totalMengisiRiasec++;
+      if (angket) totalMengisiAngket++;
+
+      let jumlahMasalahDipilih = 0;
+      if (angket?.daftarMasalah) {
+        try {
+          jumlahMasalahDipilih = JSON.parse(angket.daftarMasalah).length;
+        } catch {
+          jumlahMasalahDipilih = 0;
+        }
+      }
 
       return {
         id: s.id,
@@ -198,8 +159,22 @@ export const pelanggaranService = {
           ? { sudah: true, dominan: vak.dominan, tanggal: vak.createdAt }
           : { sudah: false, dominan: null, tanggal: null },
         minatBakat: riasec
-          ? { sudah: true, top3: riasec.kodeTop3, rekomendasi: riasec.rekomendasi, tanggal: riasec.createdAt }
+          ? {
+              sudah: true,
+              top3: riasec.kodeTop3,
+              rekomendasi: riasec.rekomendasi,
+              tanggal: riasec.createdAt,
+            }
           : { sudah: false, top3: null, rekomendasi: null, tanggal: null },
+        // Pemetaan status Angket Masalah
+        angketMasalah: angket
+          ? {
+              sudah: true,
+              statusReview: angket.statusReview,
+              totalDipilih: jumlahMasalahDipilih,
+              tanggal: angket.createdAt,
+            }
+          : { sudah: false, statusReview: null, totalDipilih: 0, tanggal: null },
       };
     });
 
@@ -209,8 +184,8 @@ export const pelanggaranService = {
       statistik: {
         totalMengisiVak,
         totalMengisiRiasec,
+        totalMengisiAngket,
       },
       siswa: list,
     };
-  },
-};
+  }}

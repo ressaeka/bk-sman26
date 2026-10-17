@@ -1,0 +1,125 @@
+export interface ButirMasalah {
+  id: number;
+  kategori: string;
+  subbab: string;
+  deskripsi: string;
+}
+
+export const STATUS_REVIEW_ANGKET = {
+  PENDING: "PENDING",
+  DIREVIEW: "DIREVIEW",
+} as const;
+
+export type StatusReviewangketMasalah =
+  (typeof STATUS_REVIEW_ANGKET)[keyof typeof STATUS_REVIEW_ANGKET];
+
+export const DAFTAR_MASALAH_ANGKET: ButirMasalah[] = [
+  // 1. Pribadi / Kesehatan (No 1 - 20)
+  { id: 1, kategori: "Pribadi/Kesehatan", subbab: "Riwayat Kesehatan", deskripsi: "Sering sakit ketika di SD" },
+  { id: 2, kategori: "Pribadi/Kesehatan", subbab: "Riwayat Kesehatan", deskripsi: "Sering sakit ketika di SMP." },
+  { id: 3, kategori: "Pribadi/Kesehatan", subbab: "Gejala Fisik & Psikosomatis", deskripsi: "Jantung sering terasa berdebar-debar." },
+  { id: 4, kategori: "Pribadi/Kesehatan", subbab: "Gejala Fisik & Psikosomatis", deskripsi: "Sering keluar keringat ?" },
+  { id: 5, kategori: "Pribadi/Kesehatan", subbab: "Kondisi Umum Fisik", deskripsi: "Kesehatan sering terganggu?" },
+  { id: 6, kategori: "Pribadi/Kesehatan", subbab: "Riwayat Medis", deskripsi: "Pernah dioperasi?" },
+  { id: 7, kategori: "Pribadi/Kesehatan", subbab: "Citra Tubuh", deskripsi: "Merasa terlalu gemuk?" },
+  { id: 8, kategori: "Pribadi/Kesehatan", subbab: "Citra Tubuh", deskripsi: "Merasa terlalu Kurus?" },
+  { id: 9, kategori: "Pribadi/Kesehatan", subbab: "Pola Makan & Nutrisi", deskripsi: "Selalu kurang nafsu makan ?" },
+  { id: 10, kategori: "Pribadi/Kesehatan", subbab: "Kondisi Fisik Khusus", deskripsi: "Merasa kurang bahagia karena cacat?" },
+  { id: 11, kategori: "Pribadi/Kesehatan", subbab: "Pola Tidur & Istirahat", deskripsi: "Sering kurang/tidak dapat tidur?" },
+  { id: 12, kategori: "Pribadi/Kesehatan", subbab: "Kondisi Umum Fisik", deskripsi: "Merasa lelah dan tidak bersemangat?" },
+  { id: 13, kategori: "Pribadi/Kesehatan", subbab: "Pola Makan & Nutrisi", deskripsi: "Makanan kurang memenuhi syarat kesehatan?" },
+  { id: 14, kategori: "Pribadi/Kesehatan", subbab: "Pola Makan & Nutrisi", deskripsi: "Kurang makan sehingga sering merasa lapar" },
+  { id: 15, kategori: "Pribadi/Kesehatan", subbab: "Pola Tidur & Istirahat", deskripsi: "Sering merasa mengantuk" },
+  { id: 16, kategori: "Pribadi/Kesehatan", subbab: "Indra Penglihatan & Pendengaran", deskripsi: "Penglihatan saya kurang?" },
+  { id: 17, kategori: "Pribadi/Kesehatan", subbab: "Indra Penglihatan & Pendengaran", deskripsi: "Pendengaran saya kurang" },
+  { id: 18, kategori: "Pribadi/Kesehatan", subbab: "Gejala Fisik & Psikosomatis", deskripsi: "Saya sering pusing/pening?" },
+  { id: 19, kategori: "Pribadi/Kesehatan", subbab: "Kondisi Emosional & Syaraf", deskripsi: "Saya menderita gugup" },
+  { id: 20, kategori: "Pribadi/Kesehatan", subbab: "Lingkungan Fisik", deskripsi: "Kurang hawa segar" },
+
+  // 2. Kehidupan Ekonomi (No 21 - 40)
+  { id: 21, kategori: "Kehidupan Ekonomi", subbab: "Kebutuhan Harian Sekolah", deskripsi: "Uang saku saya tidak mencukupi" },
+  { id: 22, kategori: "Kehidupan Ekonomi", subbab: "Fasilitas Belajar", deskripsi: "Kekurangan buku-buku karena tidak mampu membeli" },
+  { id: 23, kategori: "Kehidupan Ekonomi", subbab: "Kondisi Pekerjaan Orang Tua", deskripsi: "Ayah sudah pensiun dan tidak bekerja lagi" },
+  { id: 24, kategori: "Kehidupan Ekonomi", subbab: "Kondisi Pekerjaan Orang Tua", deskripsi: "Ayah sudah meninggal dan ibu tidak bekerja lagi" },
+  { id: 25, kategori: "Kehidupan Ekonomi", subbab: "Tuntutan Bekerja", deskripsi: "Terpaksa harus bekerja karena ekonomi tidak cukup" },
+  { id: 26, kategori: "Kehidupan Ekonomi", subbab: "Kondisi Pekerjaan Orang Tua", deskripsi: "Orang tua tidak bekerja sehingga harus bekerja" },
+  { id: 27, kategori: "Kehidupan Ekonomi", subbab: "Tanggungan Keluarga", deskripsi: "Banyak adik yang masih menjadi tanggungan orang tua" },
+  { id: 28, kategori: "Kehidupan Ekonomi", subbab: "Biaya Pendidikan", deskripsi: "Tidak tahu bagaimana cara menambah biaya sekolah" },
+  { id: 29, kategori: "Kehidupan Ekonomi", subbab: "Hutang & Pinjaman", deskripsi: "Saya sering pinjam uang" },
+  { id: 30, kategori: "Kehidupan Ekonomi", subbab: "Kelangsungan Studi", deskripsi: "Tidak melanjutkan sekolah karena soal biaya" },
+  { id: 31, kategori: "Kehidupan Ekonomi", subbab: "Kemandirian Finansial", deskripsi: "Saya ingin mempunyai penghasilan sendiri" },
+  { id: 32, kategori: "Kehidupan Ekonomi", subbab: "Fasilitas Rumah", deskripsi: "Penerangan lampu di rumah tidak cukup" },
+  { id: 33, kategori: "Kehidupan Ekonomi", subbab: "Biaya Pendidikan", deskripsi: "Terpaksa sering menunggak membayar SPP" },
+  { id: 34, kategori: "Kehidupan Ekonomi", subbab: "Transportasi", deskripsi: "Selalu berjalan kaki ke sekolah sedang rumah jauh" },
+  { id: 35, kategori: "Kehidupan Ekonomi", subbab: "Kondisi Pekerjaan Orang Tua", deskripsi: "Orang tuaku tidak mempunyai penghidupan tetap" },
+  { id: 36, kategori: "Kehidupan Ekonomi", subbab: "Biaya Pendidikan", deskripsi: "Uang sekolahku terlalu tinggi" },
+  { id: 37, kategori: "Kehidupan Ekonomi", subbab: "Kebutuhan Sandang", deskripsi: "Tidak ada uang untuk membeli pakaian" },
+  { id: 38, kategori: "Kehidupan Ekonomi", subbab: "Perjuangan Orang Tua", deskripsi: "Ibuku harus bekerja untuk biaya sekolahku" },
+  { id: 39, kategori: "Kehidupan Ekonomi", subbab: "Bantuan Finansial", deskripsi: "Mengharapkan mendapat beasiswa" },
+  { id: 40, kategori: "Kehidupan Ekonomi", subbab: "Tempat Tinggal", deskripsi: "Ikut bersama saudara yang penghasilannya pas-pasan" },
+
+  // 3. Rekreasi dan Waktu Luang (No 41 - 60)
+  { id: 41, kategori: "Rekreasi dan Waktu Luang", subbab: "Keterbatasan Waktu", deskripsi: "Hampir tidak mempunyai waktu luang untuk bermain" },
+  { id: 42, kategori: "Rekreasi dan Waktu Luang", subbab: "Kesempatan Hiburan", deskripsi: "Keinginan untuk rekreasi selalu terhalang" },
+  { id: 43, kategori: "Rekreasi dan Waktu Luang", subbab: "Fasilitas Minat & Bakat", deskripsi: "Gemar melukis tetapi tidak mempunyai alat" },
+  { id: 44, kategori: "Rekreasi dan Waktu Luang", subbab: "Keterbatasan Waktu", deskripsi: "Pada waktu libur saya harus bekerja" },
+  { id: 45, kategori: "Rekreasi dan Waktu Luang", subbab: "Aktivitas Olahraga", deskripsi: "Suka olahraga tetapi tidak ada kesempatan" },
+  { id: 46, kategori: "Rekreasi dan Waktu Luang", subbab: "Aktivitas Olahraga", deskripsi: "Tidak suka olahraga walaupun ada kesempatan" },
+  { id: 47, kategori: "Rekreasi dan Waktu Luang", subbab: "Manajemen Waktu Belajar", deskripsi: "Hobiku selalu mengganggu belajarku" },
+  { id: 48, kategori: "Rekreasi dan Waktu Luang", subbab: "Prioritas Membaca", deskripsi: "Lebih suka buku-buku hiburan daripada buku pelajaran" },
+  { id: 49, kategori: "Rekreasi dan Waktu Luang", subbab: "Hiburan Berlebih", deskripsi: "Setiap ganti film saya nonton" },
+  { id: 50, kategori: "Rekreasi dan Waktu Luang", subbab: "Fasilitas Minat & Bakat", deskripsi: "Gemar melukis tetapi tidak mempunyai waktu" },
+  { id: 51, kategori: "Rekreasi dan Waktu Luang", subbab: "Pengelolaan Waktu Senggang", deskripsi: "Tidak dapat menggunakan waktu senggang" },
+  { id: 52, kategori: "Rekreasi dan Waktu Luang", subbab: "Dukungan Lingkungan Hobi", deskripsi: "Salah satu anggota keluarga saya sering menghalangi hobi saya" },
+  { id: 53, kategori: "Rekreasi dan Waktu Luang", subbab: "Dukungan Seni & Kreasi", deskripsi: "Saya ingin belajar menari/main sandiwara tetapi tidak diijinkan" },
+  { id: 54, kategori: "Rekreasi dan Waktu Luang", subbab: "Manajemen Waktu Belajar", deskripsi: "Kesenangan membaca majalah sering menghabiskan waktu belajarku" },
+  { id: 55, kategori: "Rekreasi dan Waktu Luang", subbab: "Hiburan Berlebih", deskripsi: "Habis waktu untuk nonton TV" },
+  { id: 56, kategori: "Rekreasi dan Waktu Luang", subbab: "Rekreasi Keluarga", deskripsi: "Orang tuaku tidak pernah mengajak rekreasi" },
+  { id: 57, kategori: "Rekreasi dan Waktu Luang", subbab: "Rekreasi Keluarga", deskripsi: "Terlalu sering rekreasi ke luar kota" },
+  { id: 58, kategori: "Rekreasi dan Waktu Luang", subbab: "Fasilitas Minat & Bakat", deskripsi: "Senang menyanyi tetapi tidak ada kesempatan" },
+  { id: 59, kategori: "Rekreasi dan Waktu Luang", subbab: "Pengaruh Pertemanan", deskripsi: "Kedatangan temanku menghabiskan waktu belajarku" },
+  { id: 60, kategori: "Rekreasi dan Waktu Luang", subbab: "Manajemen Waktu Belajar", deskripsi: "Waktu belajar saya habis untuk main catur" },
+
+  // 4. Kehidupan Keluarga (No 61 - 80)
+  { id: 61, kategori: "Kehidupan Keluarga", subbab: "Status Dalam Keluarga", deskripsi: "Saya seorang anak tunggal" },
+  { id: 62, kategori: "Kehidupan Keluarga", subbab: "Pola Pengasuhan", deskripsi: "Saya tidak hidup bersama orang tua" },
+  { id: 63, kategori: "Kehidupan Keluarga", subbab: "Relasi Saudara", deskripsi: "Selalu bertengkar dengan adik/kakak" },
+  { id: 64, kategori: "Kehidupan Keluarga", subbab: "Waktu Bersama Keluarga", deskripsi: "Ayah dan ibu pulang kerja terlalu petang" },
+  { id: 65, kategori: "Kehidupan Keluarga", subbab: "Kehangatan Rumah", deskripsi: "Tidak pernah bergembira dengan ayah dan ibu" },
+  { id: 66, kategori: "Kehidupan Keluarga", subbab: "Beban Tugas Rumah Tangga", deskripsi: "Di rumah hampir tidak ada waktu untuk diri sendiri, selalu sibuk dengan tugas-tugas di rumah" },
+  { id: 67, kategori: "Kehidupan Keluarga", subbab: "Konflik Rumah Tangga", deskripsi: "Pertentangan ayah & ibu di rumah mengganggu fikiran saya" },
+  { id: 68, kategori: "Kehidupan Keluarga", subbab: "Kondisi Lingkungan Rumah", deskripsi: "Mata pencaharian di rumah mengganggu fikiran saya" },
+  { id: 69, kategori: "Kehidupan Keluarga", subbab: "Pandangan Orang Tua", deskripsi: "Pendapat keluarga yang kolot menyebabkan saya tidak dapat meneruskan sekolah/pelajaran" },
+  { id: 70, kategori: "Kehidupan Keluarga", subbab: "Perhatian Orang Tua", deskripsi: "Orang tua kurang memperhatikan saya" },
+  { id: 71, kategori: "Kehidupan Keluarga", subbab: "Kehadiran Orang Tua", deskripsi: "Orang tua saya terlalu banyak bepergian" },
+  { id: 72, kategori: "Kehidupan Keluarga", subbab: "Privasi Siswa", deskripsi: "Orang tua mencampuri urusanku" },
+  { id: 73, kategori: "Kehidupan Keluarga", subbab: "Komunikasi Orang Tua", deskripsi: "Sukar menyesuaikan diri dengan ayah/ibu" },
+  { id: 74, kategori: "Kehidupan Keluarga", subbab: "Kehangatan Rumah", deskripsi: "Di rumah saya kurang merasa senang" },
+  { id: 75, kategori: "Kehidupan Keluarga", subbab: "Keteraturan Rumah", deskripsi: "Kehidupan di rumah kurang teratur" },
+  { id: 76, kategori: "Kehidupan Keluarga", subbab: "Suasana Rumah Tangga", deskripsi: "Ingin mengadakan perubahan di rumah" },
+  { id: 77, kategori: "Kehidupan Keluarga", subbab: "Solidaritas Keluarga", deskripsi: "Keluarga kami kurang tolong-menolong" },
+  { id: 78, kategori: "Kehidupan Keluarga", subbab: "Keutuhan Keluarga", deskripsi: "Ayah dan ibu tidak hidup bersama" },
+  { id: 79, kategori: "Kehidupan Keluarga", subbab: "Keutuhan Keluarga", deskripsi: "Keluarga kami berantakan" },
+  { id: 80, kategori: "Kehidupan Keluarga", subbab: "Status Keluarga", deskripsi: "Mempunyai ayah dan ibu tiri" },
+
+  // 5. Agama dan Moral (No 81 - 99)
+  { id: 81, kategori: "Agama dan Moral", subbab: "Keyakinan & Iman", deskripsi: "Masih meragukan adanya tuhan" },
+  { id: 82, kategori: "Agama dan Moral", subbab: "Kedisiplinan Ibadah", deskripsi: "Malas bersembahyang" },
+  { id: 83, kategori: "Agama dan Moral", subbab: "Keyakinan & Iman", deskripsi: "Ingin pindah agama" },
+  { id: 84, kategori: "Agama dan Moral", subbab: "Kejujuran & Integritas", deskripsi: "Sering berdusta atau tidak jujur" },
+  { id: 85, kategori: "Agama dan Moral", subbab: "Kejujuran & Integritas", deskripsi: "Ucapan dan perbuatan sering tidak sesuai" },
+  { id: 86, kategori: "Agama dan Moral", subbab: "Perilaku Sosial & Hak Milik", deskripsi: "Sering mengambil barang orang lain" },
+  { id: 87, kategori: "Agama dan Moral", subbab: "Tanggung Jawab Pribadi", deskripsi: "Sering tidak mengembalikan barang pinjaman" },
+  { id: 88, kategori: "Agama dan Moral", subbab: "Sikap Terhadap Sesama", deskripsi: "Sering mempermainkan orang lain" },
+  { id: 89, kategori: "Agama dan Moral", subbab: "Moralitas & Etika", deskripsi: "Pernah melanggar kesusilaan" },
+  { id: 90, kategori: "Agama dan Moral", subbab: "Toleransi Beragama", deskripsi: "Merasa tidak berkewajiban untuk menghormati tiap-tiap agama" },
+  { id: 91, kategori: "Agama dan Moral", subbab: "Toleransi Beragama", deskripsi: "Merasa terganggu jika ada orang lain menjalankan ibadahnya" },
+  { id: 92, kategori: "Agama dan Moral", subbab: "Kesadaran Spiritual", deskripsi: "Tidak menyadari sebagai makhluk Tuhan" },
+  { id: 93, kategori: "Agama dan Moral", subbab: "Kesadaran Spiritual", deskripsi: "Merasa tidak berkewajiban menyembah Tuhan" },
+  { id: 94, kategori: "Agama dan Moral", subbab: "Kebebasan Beragama", deskripsi: "Merasa tidak bebas dalam menganut Agama" },
+  { id: 95, kategori: "Agama dan Moral", subbab: "Kesesuaian Nilai Agama", deskripsi: "Selalu merasa bertentangan dengan ajaran yang saya anut" },
+  { id: 96, kategori: "Agama dan Moral", subbab: "Etika & Tata Krama", deskripsi: "Sopan santun lahir lebih berharga bagi saya" },
+  { id: 97, kategori: "Agama dan Moral", subbab: "Toleransi Beragama", deskripsi: "Tidak mempunyai rasa hormat terhadap pemeluk agama lain" },
+  { id: 98, kategori: "Agama dan Moral", subbab: "Rasa Bersalah & Penyesalan", deskripsi: "Saya merasa berdosa sekali" },
+  { id: 99, kategori: "Agama dan Moral", subbab: "Kebutuhan Rohani", deskripsi: "Agama tidak merupakan kebutuhan bagi saya" },
+];

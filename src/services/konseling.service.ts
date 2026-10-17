@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/prisma";
 import { konselingRepository } from "@/repositories/konseling.repository";
 import {
   STATUS_KONSELING,
@@ -6,14 +7,16 @@ import {
 } from "@/constants/konseling.constant";
 import { CreateKonselingInput } from "@/schemas/konseling.schema";
 import { AppError } from "@/lib/utils/response";
-import { KonselingWhereInput } from "@/generated/prisma/models";
 
-export function formatKonselingSession(session: KonselingWhereInput) {
+// Buat ngerapihin data sesi konseling dari DB biar enak dibaca pas dilempar ke frontend
+export function formatKonselingSession(session: KonselingEntity) {
+  // Ambil label status sama warna badge-nya
   const meta = STATUS_KONSELING_META[session.status as StatusKonseling] ?? {
     label: session.status,
     badgeVariant: "pending" as const,
   };
 
+  // Ubah tanggal jadi format string simpel (YYYY-MM-DD)
   const tanggalFormatted =
     session.tanggal instanceof Date
       ? session.tanggal.toISOString().split("T")[0]
@@ -22,6 +25,7 @@ export function formatKonselingSession(session: KonselingWhereInput) {
   return {
     id: session.id,
     siswaId: session.siswaId,
+    // Info singkat siswa yang ngajuin jadwal
     siswa: session.siswa
       ? {
           id: session.siswa.id,
@@ -30,6 +34,7 @@ export function formatKonselingSession(session: KonselingWhereInput) {
           rombel: session.siswa.rombel,
         }
       : null,
+    // Guru BK yang megang sesi konselingnya
     counselor: session.counselor
       ? {
           id: session.counselor.id,
@@ -51,12 +56,37 @@ export function formatKonselingSession(session: KonselingWhereInput) {
 }
 
 export const konselingService = {
+  // Siswa bikin janji temu baru, dicek dulu biar nggak spam kalo masih ada jadwal aktif
   async createSession(siswaId: number, data: CreateKonselingInput) {
-    const tanggalDate = new Date(data.tanggal);
-    if (isNaN(tanggalDate.getTime())) {
-      throw new AppError("Format tanggal tidak valid", 400);
+    // 1. Cek dulu apakah siswa masih punya sesi yang statusnya PENDING atau DISETUJUI
+    const activeSession = await prisma.konseling.findFirst({
+      where: {
+        siswaId,
+        status: {
+          in: [STATUS_KONSELING.PENDING, STATUS_KONSELING.DISETUJUI],
+        },
+      },
+    });
+
+    if (activeSession) {
+      const statusText =
+        activeSession.status === STATUS_KONSELING.PENDING
+          ? "masih nunggu persetujuan Guru BK"
+          : "udah disetujui dan belum selesai";
+
+      throw new AppError(
+        `Kamu masih punya jadwal konseling yang ${statusText}. Selesaiin dulu sesi itu baru bisa ngajuin jadwal baru ya.`,
+        400
+      );
     }
 
+    // 2. Cek format tanggalnya
+    const tanggalDate = new Date(data.tanggal);
+    if (isNaN(tanggalDate.getTime())) {
+      throw new AppError("Format tanggalnya salah nih, coba cek lagi", 400);
+    }
+
+    // 3. Simpan sesi baru ke database
     const session = await konselingRepository.create({
       siswaId,
       tanggal: tanggalDate,
@@ -66,15 +96,16 @@ export const konselingService = {
       status: STATUS_KONSELING.PENDING,
     });
 
-    return formatKonselingSession(session);
+    return formatKonselingSession(session as KonselingEntity);
   },
 
+  // Buat ngecek riwayat permohonan konseling punya siswa yang lagi login
   async getSiswaHistory(siswaId: number) {
     const sessions = await konselingRepository.findAllBySiswaId(siswaId);
-    return sessions.map(formatKonselingSession);
+    return sessions.map((s) => formatKonselingSession(s as KonselingEntity));
   },
 
-  // Sambungkan langsung ke findPaginated repository
+  // Guru BK narik semua list jadwal konseling (ada paginasi & filter status)
   async getAllSessionsForBk(
     page: number = 1,
     limit: number = 10,
@@ -84,7 +115,7 @@ export const konselingService = {
     const result = await konselingRepository.findPaginated(page, limit, sortOrder, filter);
 
     return {
-      items: result.items.map(formatKonselingSession),
+      items: result.items.map((s) => formatKonselingSession(s as KonselingEntity)),
       total: result.total,
       page: result.page,
       limit: result.limit,
@@ -92,21 +123,24 @@ export const konselingService = {
     };
   },
 
+  // Ambil detail satu sesi konseling lewat ID-nya
   async getSessionById(id: number) {
     const session = await konselingRepository.findById(id);
     if (!session) return null;
-    return formatKonselingSession(session);
+    return formatKonselingSession(session as KonselingEntity);
   },
 
+  // Guru BK update status (terima/tolak/selesai) sekalian ninggalin catatan arahan
   async updateSessionStatus(
     id: number,
     counselorId: number,
     status: StatusKonseling,
     catatanGuruBK?: string | null
   ) {
+    // Pastiin dulu jadwal konselingnya beneran ada di database
     const existing = await konselingRepository.findById(id);
     if (!existing) {
-      throw new AppError("Sesi konseling tidak ditemukan", 404);
+      throw new AppError("Sesi konseling nggak ketemu", 404);
     }
 
     const updated = await konselingRepository.update(id, {
@@ -115,6 +149,32 @@ export const konselingService = {
       catatanGuruBK: catatanGuruBK !== undefined ? catatanGuruBK : existing.catatanGuruBK,
     });
 
-    return formatKonselingSession(updated);
+    return formatKonselingSession(updated as KonselingEntity);
   },
 };
+
+// Cetak biru struktur data sesi konseling plus relasinya
+export interface KonselingEntity {
+  id: number;
+  siswaId: number;
+  counselorId: number | null;
+  tanggal: Date | string;
+  jam: string;
+  topik: string;
+  keluhan: string | null;
+  status: string;
+  catatanGuruBK: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  siswa?: {
+    id: number;
+    nisn: string;
+    nama_siswa: string | null;
+    rombel: string | null;
+  } | null;
+  counselor?: {
+    id: number;
+    nip: string | null;
+    nama_counselor: string;
+  } | null;
+}

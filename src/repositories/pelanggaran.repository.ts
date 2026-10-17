@@ -132,48 +132,33 @@ export const pelanggaranRepository = {
   },
 
   // Rekap hasil asesmen per rombel
-  getRekapAssessmentByRombel(rombel?: string) {
-    const where = rombel ? { rombel } : {};
-
+  async getRekapAssessmentByRombel(rombel?: string, take: number = 100) {
     return prisma.siswa.findMany({
-      where,
+      where: rombel ? { rombel } : undefined,
+      take, // Mencegah crash memori server jika rombel dikosongkan
+      orderBy: { nama_siswa: "asc" },
       select: {
         id: true,
         nisn: true,
         nama_siswa: true,
         rombel: true,
-        jenis_kelamin: true,
         gayaBelajar: {
           orderBy: { createdAt: "desc" },
           take: 1,
-          select: {
-            id: true,
-            skorV: true,
-            skorA: true,
-            skorK: true,
-            dominan: true,
-            createdAt: true,
-          },
+          select: { dominan: true, createdAt: true },
         },
         minatBakat: {
           orderBy: { createdAt: "desc" },
           take: 1,
-          select: {
-            id: true,
-            kodeTop3: true,
-            rekomendasi: true,
-            skorR: true,
-            skorI: true,
-            skorA: true,
-            skorS: true,
-            skorE: true,
-            skorC: true,
-            createdAt: true,
-          },
+          select: { kodeTop3: true, rekomendasi: true, createdAt: true },
+        },
+        angketMasalah: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { id: true, statusReview: true, daftarMasalah: true, createdAt: true },
         },
       },
-      orderBy: [{ rombel: "asc" }, { nama_siswa: "asc" }],
-    });
+    })
   },
 
   // Riwayat pelanggaran berpaginasi
