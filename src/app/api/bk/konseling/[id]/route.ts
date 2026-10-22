@@ -13,7 +13,7 @@ export async function PATCH(
     const { id } = await props.params;
     const sessionId = Number(id);
 
-    if (!sessionId) {
+    if (!Number.isInteger(sessionId) || sessionId <= 0) {
       throw new AppError("ID sesi konseling tidak valid", 400);
     }
 

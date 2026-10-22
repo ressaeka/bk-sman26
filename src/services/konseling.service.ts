@@ -64,9 +64,12 @@ export const konselingService = {
       throw new AppError("Format tanggalnya salah nih, coba cek lagi", 400);
     }
 
-    // Bungkus pengecekan dan pembuatan data dalam transaksi Prisma
+    // Bungkus pengecekan dan pembuatan data dalam transaksi Prisma dengan pessimistic row lock
     const session = await prisma.$transaction(async (tx) => {
-      // 1. Cek apakah siswa masih punya sesi aktif (PENDING / DISETUJUI)
+      // 1. Ambil exclusive lock pada baris siswa untuk memblokir concurrent double-submission
+      await tx.$queryRaw`SELECT id FROM siswa WHERE id = ${siswaId} FOR UPDATE`;
+
+      // 2. Cek apakah siswa masih punya sesi aktif (PENDING / DISETUJUI)
       const activeSession = await tx.konseling.findFirst({
         where: {
           siswaId,
@@ -88,7 +91,7 @@ export const konselingService = {
         );
       }
 
-      // 2. Simpan sesi baru ke database di dalam transaksi yang sama
+      // 3. Simpan sesi baru ke database di dalam transaksi yang sama
       return tx.konseling.create({
         data: {
           siswaId,
@@ -114,6 +117,55 @@ export const konselingService = {
     return sessions.map((s) => formatKonselingSession(s as KonselingEntity));
   },
 
+  // Siswa mengambil detail satu sesi konseling miliknya sendiri (mencegah IDOR)
+  async getSiswaSessionById(id: number, siswaId: number) {
+    const session = await konselingRepository.findById(id);
+    if (!session || session.siswaId !== siswaId) {
+      throw new AppError("Data sesi konseling tidak ditemukan", 404);
+    }
+    return formatKonselingSession(session as KonselingEntity);
+  },
+
+  // Siswa membatalkan pengajuan konseling miliknya yang masih PENDING
+  async cancelSessionBySiswa(id: number, siswaId: number) {
+    const cancelled = await prisma.$transaction(async (tx) => {
+      // 1. Ambil baris sesi konseling di dalam transaksi
+      const session = await tx.konseling.findUnique({
+        where: { id },
+      });
+
+      if (!session || session.siswaId !== siswaId) {
+        throw new AppError("Data sesi konseling tidak ditemukan", 404);
+      }
+
+      // 2. Hanya pengajuan PENDING yang boleh dibatalkan oleh siswa
+      if (session.status !== STATUS_KONSELING.PENDING) {
+        const statusLabel =
+          STATUS_KONSELING_META[session.status as StatusKonseling]?.label || session.status;
+        throw new AppError(
+          `Pengajuan tidak dapat dibatalkan karena sudah berstatus "${statusLabel}". Hanya pengajuan berstatus Menunggu Persetujuan yang dapat dibatalkan.`,
+          400
+        );
+      }
+
+      // 3. Update status menjadi DITOLAK dengan catatan sistem "Dibatalkan oleh siswa"
+      return tx.konseling.update({
+        where: { id },
+        data: {
+          status: STATUS_KONSELING.DITOLAK,
+          catatanGuruBK: "Dibatalkan oleh siswa",
+          updatedAt: new Date(),
+        },
+        include: {
+          siswa: true,
+          counselor: true,
+        },
+      });
+    });
+
+    return formatKonselingSession(cancelled as KonselingEntity);
+  },
+
   // Guru BK narik semua list jadwal konseling (ada paginasi & filter status)
   async getAllSessionsForBk(
     page: number = 1,
@@ -132,30 +184,86 @@ export const konselingService = {
     };
   },
 
-  // Ambil detail satu sesi konseling lewat ID-nya
+  // Ambil detail satu sesi konseling lewat ID-nya (untuk Guru BK)
   async getSessionById(id: number) {
     const session = await konselingRepository.findById(id);
     if (!session) return null;
     return formatKonselingSession(session as KonselingEntity);
   },
 
-  // Guru BK update status (terima/tolak/selesai) sekalian ninggalin catatan arahan
+  // Guru BK update status (terima/tolak/selesai) dengan pencegahan bentrok jadwal atomik
   async updateSessionStatus(
     id: number,
     counselorId: number,
     status: StatusKonseling,
     catatanGuruBK?: string | null
   ) {
-    // Pastiin dulu jadwal konselingnya beneran ada di database
-    const existing = await konselingRepository.findById(id);
-    if (!existing) {
-      throw new AppError("Sesi konseling nggak ketemu", 404);
-    }
+    const updated = await prisma.$transaction(async (tx) => {
+      // 1. Kunci baris counselor untuk memblokir concurrent approvals pada guru BK yang sama
+      await tx.$queryRaw`SELECT id FROM counselor WHERE id = ${counselorId} FOR UPDATE`;
 
-    const updated = await konselingRepository.update(id, {
-      status,
-      counselorId,
-      catatanGuruBK: catatanGuruBK !== undefined ? catatanGuruBK : existing.catatanGuruBK,
+      // 2. Ambil sesi yang akan diupdate
+      const existing = await tx.konseling.findUnique({
+        where: { id },
+      });
+
+      if (!existing) {
+        throw new AppError("Sesi konseling nggak ketemu", 404);
+      }
+
+      // 3. Jika status diubah menjadi DISETUJUI, periksa bentrok jadwal
+      if (status === STATUS_KONSELING.DISETUJUI) {
+        // Cek apakah Guru BK ini sudah memiliki sesi lain yang disetujui pada tanggal dan jam yang sama
+        const conflictingBkSession = await tx.konseling.findFirst({
+          where: {
+            id: { not: id },
+            counselorId,
+            tanggal: existing.tanggal,
+            jam: existing.jam,
+            status: STATUS_KONSELING.DISETUJUI,
+          },
+        });
+
+        if (conflictingBkSession) {
+          throw new AppError(
+            "Guru BK sudah memiliki jadwal konseling lain yang telah disetujui pada tanggal dan jam tersebut. Silakan atur ulang waktu konseling.",
+            409
+          );
+        }
+
+        // Cek apakah Siswa ini sudah memiliki sesi lain yang disetujui pada tanggal dan jam yang sama
+        const conflictingSiswaSession = await tx.konseling.findFirst({
+          where: {
+            id: { not: id },
+            siswaId: existing.siswaId,
+            tanggal: existing.tanggal,
+            jam: existing.jam,
+            status: STATUS_KONSELING.DISETUJUI,
+          },
+        });
+
+        if (conflictingSiswaSession) {
+          throw new AppError(
+            "Siswa ini sudah memiliki jadwal konseling lain yang disetujui pada tanggal dan jam yang sama.",
+            409
+          );
+        }
+      }
+
+      // 4. Update status dan catatan sesi
+      return tx.konseling.update({
+        where: { id },
+        data: {
+          status,
+          counselorId,
+          catatanGuruBK: catatanGuruBK !== undefined ? catatanGuruBK : existing.catatanGuruBK,
+          updatedAt: new Date(),
+        },
+        include: {
+          siswa: true,
+          counselor: true,
+        },
+      });
     });
 
     return formatKonselingSession(updated as KonselingEntity);

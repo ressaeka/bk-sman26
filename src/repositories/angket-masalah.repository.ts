@@ -18,6 +18,40 @@ export const angketMasalahRepository = {
     });
   },
 
+  createWithCheck(
+    siswaId: number,
+    data: {
+      daftarMasalah: string;
+      statusReview?: string;
+    }
+  ) {
+    return prisma.$transaction(async (tx) => {
+      // 1. Ambil exclusive lock pada baris siswa untuk memblokir request konkuren dari siswa yang sama
+      await tx.$queryRaw`SELECT id FROM siswa WHERE id = ${siswaId} FOR UPDATE`;
+
+      // 2. Sekarang setelah lock dipegang secara eksklusif, periksa riwayat pengisian
+      const existing = await tx.angketMasalah.findFirst({
+        where: { siswaId },
+      });
+
+      if (existing) {
+        return null;
+      }
+
+      // 3. Simpan jawaban angket masalah
+      return tx.angketMasalah.create({
+        data: {
+          siswaId,
+          daftarMasalah: data.daftarMasalah,
+          statusReview: data.statusReview ?? "PENDING",
+        },
+        include: {
+          siswa: true,
+        },
+      });
+    });
+  },
+
   findById(id: number) {
     return prisma.angketMasalah.findUnique({
       where: { id },

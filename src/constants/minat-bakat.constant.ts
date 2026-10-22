@@ -16,14 +16,7 @@ export const RIASEC_DETAILS: Record<RiasecCode, RiasecDimensionDetail> = {
     nama: 'Realistic',
     namaLengkap: 'Praktikal & Lapangan (Realistic)',
     deskripsi: 'Menyukai aktivitas fisik terukur, perkakas mesin, perakitan, dan kegiatan lapangan konkret.',
-    bidangProfesi: [
-      'Pertanian',
-      'Asisten Kesehatan',
-      'Komputer',
-      'Konstruksi',
-      'Mekanik',
-      'Pariwisata',
-    ],
+    bidangProfesi: ['Pertanian', 'Asisten Kesehatan', 'Komputer', 'Konstruksi', 'Mekanik', 'Pariwisata'],
     jalurBimbinganKarir: [
       'Sumber daya alam',
       'Layanan kesehatan',
@@ -75,11 +68,7 @@ export const RIASEC_DETAILS: Record<RiasecCode, RiasecDimensionDetail> = {
       'Arsitektur',
       'Desain komunikasi visual',
     ],
-    jalurBimbinganKarir: [
-      'Pekerja sosial',
-      'Seni',
-      'Komunikasi',
-    ],
+    jalurBimbinganKarir: ['Pekerja sosial', 'Seni', 'Komunikasi'],
   },
   S: {
     kode: 'S',
@@ -95,10 +84,7 @@ export const RIASEC_DETAILS: Record<RiasecCode, RiasecDimensionDetail> = {
       'Public Relation',
       'Pendidikan',
     ],
-    jalurBimbinganKarir: [
-      'Layanan kesehatan',
-      'Pekerja sosial',
-    ],
+    jalurBimbinganKarir: ['Layanan kesehatan', 'Pekerja sosial'],
   },
   E: {
     kode: 'E',
@@ -114,31 +100,15 @@ export const RIASEC_DETAILS: Record<RiasecCode, RiasecDimensionDetail> = {
       'Perdagangan internasional',
       'Finansial/perbankan',
     ],
-    jalurBimbinganKarir: [
-      'Bisnis',
-      'Pekerja sosial',
-      'Seni',
-      'Komunikasi',
-    ],
+    jalurBimbinganKarir: ['Bisnis', 'Pekerja sosial', 'Seni', 'Komunikasi'],
   },
   C: {
     kode: 'C',
     nama: 'Conventional',
     namaLengkap: 'Terstruktur & Data (Conventional)',
     deskripsi: 'Tertarik pada keteraturan data terperinci, pengarsipan sistematis, akuntansi, dan prosedur baku.',
-    bidangProfesi: [
-      'Akuntansi',
-      'Asuransi',
-      'Administrasi',
-      'Banking',
-      'Data processing',
-    ],
-    jalurBimbinganKarir: [
-      'Layanan kesehatan',
-      'Bisnis',
-      'Teknik Industri',
-      'Teknologi Informasi',
-    ],
+    bidangProfesi: ['Akuntansi', 'Asuransi', 'Administrasi', 'Banking', 'Data processing'],
+    jalurBimbinganKarir: ['Layanan kesehatan', 'Bisnis', 'Teknik Industri', 'Teknologi Informasi'],
   },
 };
 
@@ -193,6 +163,8 @@ export const BANK_SOAL_RIASEC: SoalRiasec[] = [
   { id: 42, dimensi: 'S', pertanyaan: 'Aku suka berbicara di depan umum' },
 ];
 
+export type KodeRekomendasi = 'MIPA' | 'IPS' | 'BAHASA';
+
 export interface JurusanDetail {
   kodeJurusan: 'MIPA' | 'IPS' | 'Bahasa & Budaya';
   namaLengkap: string;
@@ -201,7 +173,7 @@ export interface JurusanDetail {
   karirProspektif: string[];
 }
 
-export const REKOMENDASI_JURUSAN: Record<string, JurusanDetail> = {
+export const REKOMENDASI_JURUSAN: Record<KodeRekomendasi, JurusanDetail> = {
   MIPA: {
     kodeJurusan: 'MIPA',
     namaLengkap: 'Matematika & Ilmu Pengetahuan Alam (MIPA)',
@@ -225,44 +197,64 @@ export const REKOMENDASI_JURUSAN: Record<string, JurusanDetail> = {
   },
 };
 
+export type SkorRiasec = Record<RiasecCode, number>;
+
+export interface HasilRekomendasi {
+  totalRIA: number;
+  totalSEC: number;
+  rekomendasiUtama: JurusanDetail[];
+  alasan: string;
+}
+
 /**
- * DSS Penjurusan SMAN 26 (Murni Sesuai Catatan Dokumen BK):
- * - C = Bahasa
- * - RIA = IPA (MIPA)
- * - SEC = IPS
+ * DSS Penjurusan SMAN 26 (sesuai catatan dokumen BK):
+ * - RIA > SEC                          = MIPA
+ * - SEC > RIA                          = IPS
+ * - SEC > RIA dan C paling besar di SEC = Bahasa & Budaya
+ * - RIA = SEC (seri)                   = MIPA + (Bahasa jika C terbesar di SEC, selain itu IPS)
+ *
+ * Hasil hanya salah satu dari tiga: MIPA, IPS, Bahasa.
  */
-export function matchRekomendasiJurusan(
-  top1: RiasecCode,
-  top2: RiasecCode,
-  top3: RiasecCode
-): JurusanDetail {
-  // 1. Dominan C -> Bahasa
-  if (top1 === 'C') {
-    return REKOMENDASI_JURUSAN.BAHASA;
+export function hitungRekomendasiJurusan(scores: SkorRiasec ): HasilRekomendasi {
+  for (const kode of RIASEC_CODES) {
+    if (!Number.isFinite(scores[kode]) || scores[kode] < 0) {
+      throw new Error(`Skor ${kode} harus berupa angka valid dan tidak negatif.`);
+    }
   }
 
-  // Bobot peringkat: Top 1 = 3, Top 2 = 2, Top 3 = 1
-  const weights: Record<RiasecCode, number> = {
-    R: 0,
-    I: 0,
-    A: 0,
-    S: 0,
-    E: 0,
-    C: 0,
+  const totalRIA = scores.R + scores.I + scores.A;
+  const totalSEC = scores.S + scores.E + scores.C;
+
+  const cTertinggiDiSEC =
+    scores.C > scores.S && scores.C > scores.E;
+
+  const jurusanSEC = cTertinggiDiSEC
+    ? REKOMENDASI_JURUSAN.BAHASA
+    : REKOMENDASI_JURUSAN.IPS;
+
+  const rekomendasiUtama: JurusanDetail[] = [];
+  let alasan: string;
+
+  if (totalRIA > totalSEC) {
+    rekomendasiUtama.push(REKOMENDASI_JURUSAN.MIPA);
+    alasan = `Total RIA (${totalRIA}) lebih tinggi daripada SEC (${totalSEC}).`;
+  } else if (totalSEC > totalRIA) {
+    rekomendasiUtama.push(jurusanSEC);
+    alasan = cTertinggiDiSEC
+      ? `Total SEC (${totalSEC}) lebih tinggi daripada RIA (${totalRIA}), dan C merupakan dimensi tertinggi dalam klaster SEC.`
+      : `Total SEC (${totalSEC}) lebih tinggi daripada RIA (${totalRIA}), tetapi C bukan dimensi tertinggi dalam klaster SEC.`;
+  } else {
+    rekomendasiUtama.push(
+      REKOMENDASI_JURUSAN.MIPA,
+      jurusanSEC,
+    );
+    alasan = `Total RIA dan SEC seri (${totalRIA}); kedua klaster direkomendasikan.`;
+  }
+
+  return {
+    totalRIA,
+    totalSEC,
+    rekomendasiUtama,
+    alasan,
   };
-
-  weights[top1] += 3;
-  weights[top2] += 2;
-  weights[top3] += 1;
-
-  const poinRIA = weights.R + weights.I + weights.A; // RIA = IPA
-  const poinSEC = weights.S + weights.E + weights.C; // SEC = IPS
-
-  // 2. Evaluasi Klaster RIA vs SEC
-  if (poinRIA > poinSEC) {
-    return REKOMENDASI_JURUSAN.MIPA;
-  }
-
-  // 3. Masuk klaster SEC -> IPS
-  return REKOMENDASI_JURUSAN.IPS;
 }

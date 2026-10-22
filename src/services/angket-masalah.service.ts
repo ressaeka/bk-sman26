@@ -90,17 +90,8 @@ export const AngketMasalahService = {
     return DAFTAR_MASALAH_ANGKET;
   },
 
-    // 2. Siswa submit asesmen angketMasalah (maksimal 8 ID masalah)
+    // 2. Siswa submit asesmen angketMasalah
   async submitAssessment(siswaId: number, masalahIds: number[]) {
-    const existing = await angketMasalahRepository.findLatestBySiswaId(siswaId);
-
-    if (existing) {
-      throw new AppError(
-        "Anda sudah pernah mengisi Angket Masalah. Hasil asesmen Anda sudah tersimpan.",
-        400
-      );
-    }
-
     if (!masalahIds || masalahIds.length === 0) {
       throw new AppError("Pilih minimal 1 butir masalah yang sedang dialami", 400);
     }
@@ -118,11 +109,18 @@ export const AngketMasalahService = {
       throw new AppError("Pilihan butir masalah tidak valid", 400);
     }
 
-    const record = await angketMasalahRepository.create({
-      siswaId,
+    // Gunakan createWithCheck berbasis transaksi database untuk mencegah race condition / submission ganda
+    const record = await angketMasalahRepository.createWithCheck(siswaId, {
       daftarMasalah: JSON.stringify(validIds),
       statusReview: STATUS_REVIEW_ANGKET.PENDING,
     });
+
+    if (!record) {
+      throw new AppError(
+        "Anda sudah pernah mengisi Angket Masalah. Hasil asesmen Anda sudah tersimpan.",
+        400
+      );
+    }
 
     return {
       id: record.id,

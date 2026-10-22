@@ -63,6 +63,7 @@ model counselor {
   pelanggaran    Pelanggaran[]
   angketMasalah  AngketMasalah[]
   konseling      Konseling[]
+  jadwalAsesmen  JadwalAsesmen[]
 
   @@map("counselor")
 }
@@ -186,4 +187,28 @@ model Konseling {
   @@index([status])     
   @@index([tanggal])    
   @@map("konseling")
+}
+
+model JadwalAsesmen {
+  id             Int        @id @default(autoincrement())
+  counselorId    Int?
+  tipe           String     @db.VarChar(50) // ANGKET_MASALAH, GAYA_BELAJAR, MINAT_BAKAT
+  judul          String     @db.VarChar(150)
+  deskripsi      String?    @db.Text
+  tanggalMulai   DateTime   @db.DateTime(0)
+  tanggalSelesai DateTime   @db.DateTime(0)
+  targetTingkat  String?    @db.VarChar(10) // "ALL", "10", "11", "12", "X", "XI", "XII"
+  targetRombel   String?    @db.VarChar(50) // null = semua rombel di tingkat tersebut
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now()) @db.DateTime(0)
+  updatedAt      DateTime   @default(now()) @db.DateTime(0)
+
+  counselor      counselor? @relation(fields: [counselorId], references: [id], onDelete: SetNull)
+
+  @@index([tipe])
+  @@index([targetTingkat])
+  @@index([targetRombel])
+  @@index([tanggalMulai, tanggalSelesai])
+  @@index([counselorId])
+  @@map("jadwal_asesmen")
 }
