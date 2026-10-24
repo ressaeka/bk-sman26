@@ -196,3 +196,85 @@ export function evaluasiSanksiSiswa(totalPoin: number): TingkatSanksiDSS | null 
 
   return TINGKAT_SANKSI_PELANGGARAN[TINGKAT_SANKSI_PELANGGARAN.length - 1];
 }
+
+// 4. KONSTANTA MODUL TINDAK LANJUT PELANGGARAN
+export const STATUS_TINDAK_LANJUT_KASUS = {
+  BELUM_DITANGANI: "BELUM_DITANGANI",
+  DALAM_PEMBINAAN: "DALAM_PEMBINAAN",
+  SELESAI: "SELESAI",
+  DIBATALKAN: "DIBATALKAN",
+} as const;
+
+export type StatusTindakLanjutKasus =
+  (typeof STATUS_TINDAK_LANJUT_KASUS)[keyof typeof STATUS_TINDAK_LANJUT_KASUS];
+
+/**
+ * Finite State Machine (FSM) aturan transisi status kasus tindak lanjut pelanggaran
+ * - BELUM_DITANGANI: dapat ke DALAM_PEMBINAAN, SELESAI, atau DIBATALKAN
+ * - DALAM_PEMBINAAN: dapat ke SELESAI atau DIBATALKAN
+ * - SELESAI: hanya dapat ke DALAM_PEMBINAAN (pembukaan kembali kasus secara eksplisit)
+ * - DIBATALKAN: tidak boleh berpindah status secara langsung
+ */
+export const ALLOWED_STATUS_TRANSITIONS: Record<
+  StatusTindakLanjutKasus,
+  readonly StatusTindakLanjutKasus[]
+> = {
+  BELUM_DITANGANI: ["DALAM_PEMBINAAN", "SELESAI", "DIBATALKAN"],
+  DALAM_PEMBINAAN: ["SELESAI", "DIBATALKAN"],
+  SELESAI: ["DALAM_PEMBINAAN"],
+  DIBATALKAN: [],
+} as const;
+
+export const STATUS_PELAKSANAAN_TINDAKAN = {
+  DIRENCANAKAN: "DIRENCANAKAN",
+  TERLAKSANA: "TERLAKSANA",
+  BATAL_TERTUNDA: "BATAL_TERTUNDA",
+} as const;
+
+export type StatusPelaksanaanTindakan =
+  (typeof STATUS_PELAKSANAAN_TINDAKAN)[keyof typeof STATUS_PELAKSANAAN_TINDAKAN];
+
+export const BENTUK_TINDAK_LANJUT = {
+  PEMANGGILAN_SISWA: "PEMANGGILAN_SISWA",
+  PEMANGGILAN_ORANG_TUA: "PEMANGGILAN_ORANG_TUA",
+  SURAT_PERNYATAAN: "SURAT_PERNYATAAN",
+  KONSELING_INDIVIDUAL: "KONSELING_INDIVIDUAL",
+  PERTEMUAN_KASUS: "PERTEMUAN_KASUS",
+  SANKSI_EDUKATIF: "SANKSI_EDUKATIF",
+  LAINNYA: "LAINNYA",
+} as const;
+
+export type BentukTindakLanjut =
+  (typeof BENTUK_TINDAK_LANJUT)[keyof typeof BENTUK_TINDAK_LANJUT];
+
+export const STATUS_TINDAK_LANJUT_META: Record<
+  StatusTindakLanjutKasus,
+  { label: string; badgeVariant: "warning" | "info" | "success" | "neutral" }
+> = {
+  BELUM_DITANGANI: {
+    label: "Belum Ditangani",
+    badgeVariant: "warning",
+  },
+  DALAM_PEMBINAAN: {
+    label: "Dalam Pembinaan",
+    badgeVariant: "info",
+  },
+  SELESAI: {
+    label: "Selesai Ditangani",
+    badgeVariant: "success",
+  },
+  DIBATALKAN: {
+    label: "Dibatalkan",
+    badgeVariant: "neutral",
+  },
+};
+
+export const BENTUK_TINDAK_LANJUT_LABEL: Record<BentukTindakLanjut, string> = {
+  PEMANGGILAN_SISWA: "Pemanggilan Siswa",
+  PEMANGGILAN_ORANG_TUA: "Pemanggilan Orang Tua / Wali",
+  SURAT_PERNYATAAN: "Penandatanganan Surat Pernyataan",
+  KONSELING_INDIVIDUAL: "Konseling Individual",
+  PERTEMUAN_KASUS: "Konferensi Kasus (Wali Kelas / Wakasek)",
+  SANKSI_EDUKATIF: "Sanksi Edukatif & Pembiasaan",
+  LAINNYA: "Tindakan Lainnya",
+};

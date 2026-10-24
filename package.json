@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "test": "tsx tests/angket-masalah-security.test.ts && tsx tests/konseling-security.test.ts && tsx tests/activity-service.test.ts && tsx tests/jadwal-asesmen-security.test.ts",
+    "test": "tsx tests/angket-masalah-security.test.ts && tsx tests/konseling-security.test.ts && tsx tests/activity-service.test.ts && tsx tests/jadwal-asesmen-security.test.ts && tsx tests/dashboard-stats.test.ts && tsx tests/tindak-lanjut.test.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:sync": "tsx prisma/sync-users.ts"
   },

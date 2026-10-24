@@ -64,6 +64,7 @@ model counselor {
   angketMasalah  AngketMasalah[]
   konseling      Konseling[]
   jadwalAsesmen  JadwalAsesmen[]
+  tindakLanjut   TindakLanjutPelanggaran[]
 
   @@map("counselor")
 }
@@ -96,21 +97,72 @@ model siswa {
 }
 
 
-model Pelanggaran {
-  id               Int        @id @default(autoincrement())
-  siswaId          Int
-  counselorId      Int?
-  jenisPelanggaran String     @db.VarChar(255)
-  poin             Int
-  keterangan       String?    @db.Text
-  createdAt        DateTime   @default(now()) @db.DateTime(0)
+enum StatusTindakLanjutKasus {
+  BELUM_DITANGANI
+  DALAM_PEMBINAAN
+  SELESAI
+  DIBATALKAN
+}
 
-  siswa            siswa      @relation(fields: [siswaId], references: [id], onDelete: Cascade)
-  counselor        counselor? @relation(fields: [counselorId], references: [id], onDelete: SetNull)
+enum StatusPelaksanaanTindakan {
+  DIRENCANAKAN
+  TERLAKSANA
+  BATAL_TERTUNDA
+}
+
+enum BentukTindakLanjut {
+  PEMANGGILAN_SISWA
+  PEMANGGILAN_ORANG_TUA
+  SURAT_PERNYATAAN
+  KONSELING_INDIVIDUAL
+  PERTEMUAN_KASUS
+  SANKSI_EDUKATIF
+  LAINNYA
+}
+
+model Pelanggaran {
+  id                 Int                     @id @default(autoincrement())
+  siswaId            Int
+  counselorId        Int?
+  jenisPelanggaran   String                  @db.VarChar(255)
+  poin               Int
+  keterangan         String?                 @db.Text
+  statusTindakLanjut StatusTindakLanjutKasus @default(BELUM_DITANGANI)
+  createdAt          DateTime                @default(now()) @db.DateTime(0)
+  updatedAt          DateTime                @default(now()) @updatedAt @db.DateTime(0)
+
+  siswa              siswa                   @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+  counselor          counselor?              @relation(fields: [counselorId], references: [id], onDelete: SetNull)
+  tindakLanjut       TindakLanjutPelanggaran[]
 
   @@index([siswaId])
   @@index([counselorId])
+  @@index([statusTindakLanjut])
+  @@index([createdAt])
   @@map("pelanggaran")
+}
+
+model TindakLanjutPelanggaran {
+  id                Int                       @id @default(autoincrement())
+  pelanggaranId     Int
+  counselorId       Int?
+  bentukTindakan    BentukTindakLanjut        @default(PEMANGGILAN_SISWA)
+  statusPelaksanaan StatusPelaksanaanTindakan @default(TERLAKSANA)
+  tanggalTindakan   DateTime                  @db.Date
+  pihakTerlibat     String?                   @db.VarChar(255)
+  catatan           String                    @db.Text
+  tenggatEvaluasi   DateTime?                 @db.Date
+  createdAt         DateTime                  @default(now()) @db.DateTime(0)
+  updatedAt         DateTime                  @default(now()) @updatedAt @db.DateTime(0)
+
+  pelanggaran       Pelanggaran               @relation(fields: [pelanggaranId], references: [id], onDelete: Cascade)
+  counselor         counselor?                @relation(fields: [counselorId], references: [id], onDelete: SetNull)
+
+  @@index([pelanggaranId])
+  @@index([counselorId])
+  @@index([statusPelaksanaan])
+  @@index([tanggalTindakan])
+  @@map("tindak_lanjut_pelanggaran")
 }
 
 model GayaBelajar {

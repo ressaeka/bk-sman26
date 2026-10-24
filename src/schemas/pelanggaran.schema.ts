@@ -54,3 +54,92 @@ export const filterRekapAssessmentSchema = z.object({
 });
 
 export type FilterRekapAssessmentInput = z.infer<typeof filterRekapAssessmentSchema>;
+
+/**
+ * Validasi ketat format tanggal kalender YYYY-MM-DD
+ */
+function isValidDateString(val: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) return false;
+  const [y, m, d] = val.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return (
+    date.getUTCFullYear() === y &&
+    date.getUTCMonth() === m - 1 &&
+    date.getUTCDate() === d
+  );
+}
+
+/**
+ * Validasi form pencatatan tindakan pembinaan pelanggaran oleh Guru BK
+ */
+export const createTindakLanjutSchema = z.object({
+  bentukTindakan: z.enum([
+    "PEMANGGILAN_SISWA",
+    "PEMANGGILAN_ORANG_TUA",
+    "SURAT_PERNYATAAN",
+    "KONSELING_INDIVIDUAL",
+    "PERTEMUAN_KASUS",
+    "SANKSI_EDUKATIF",
+    "LAINNYA",
+  ], { message: "Bentuk tindakan tidak valid" }),
+  statusPelaksanaan: z.enum(["DIRENCANAKAN", "TERLAKSANA", "BATAL_TERTUNDA"], {
+    message: "Status pelaksanaan tindakan tidak valid",
+  }).default("TERLAKSANA"),
+  statusKasusBaru: z.enum(["BELUM_DITANGANI", "DALAM_PEMBINAAN", "SELESAI", "DIBATALKAN"], {
+    message: "Status kasus baru tidak valid",
+  }).optional(),
+  tanggalTindakan: z
+    .string({ message: "Tanggal tindakan wajib diisi" })
+    .refine(isValidDateString, {
+      message: "Format tanggal tindakan harus YYYY-MM-DD dan merupakan tanggal kalender yang valid",
+    }),
+  pihakTerlibat: z
+    .string()
+    .trim()
+    .max(255, "Pihak terlibat maksimal 255 karakter")
+    .optional()
+    .nullable(),
+  catatan: z
+    .string({ message: "Catatan hasil pembinaan wajib diisi" })
+    .trim()
+    .min(5, "Catatan pembinaan minimal 5 karakter")
+    .max(2000, "Catatan pembinaan maksimal 2000 karakter")
+    .refine(
+      (val) => {
+        const clean = val.trim();
+        return (
+          !clean.startsWith("[AUDIT_STATUS]") &&
+          !clean.startsWith("[PERUBAHAN STATUS")
+        );
+      },
+      {
+        message:
+          "Catatan tindakan pembinaan tidak boleh menggunakan prefix audit sistem ('[AUDIT_STATUS]' atau '[PERUBAHAN STATUS')",
+      }
+    ),
+  tenggatEvaluasi: z
+    .string()
+    .refine(isValidDateString, {
+      message: "Format tenggat evaluasi harus YYYY-MM-DD dan valid",
+    })
+    .optional()
+    .nullable(),
+});
+
+export type CreateTindakLanjutInput = z.infer<typeof createTindakLanjutSchema>;
+
+/**
+ * Validasi pembaruan status kasus pelanggaran
+ */
+export const updateStatusKasusSchema = z.object({
+  status: z.enum(["BELUM_DITANGANI", "DALAM_PEMBINAAN", "SELESAI", "DIBATALKAN"], {
+    message: "Status kasus tidak valid",
+  }),
+  catatanPerubahan: z
+    .string({ message: "Alasan perubahan status wajib diisi" })
+    .trim()
+    .min(5, "Alasan perubahan status minimal 5 karakter")
+    .max(1000, "Catatan perubahan maksimal 1000 karakter"),
+});
+
+export type UpdateStatusKasusInput = z.infer<typeof updateStatusKasusSchema>;

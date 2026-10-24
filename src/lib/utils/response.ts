@@ -23,6 +23,7 @@ export function paginatedResponse(
     {
       success: true,
       message,
+      data: Metadata,
       Metadata,
       pagination: {
         total,
